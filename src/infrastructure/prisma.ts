@@ -1,7 +1,17 @@
+import 'dotenv/config';
+import * as dotenv from 'dotenv';
+import { expand } from 'dotenv-expand';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import pg from 'pg';
+
+const myEnv = dotenv.config();
+expand(myEnv);
 
 const prismaClientSingleton = () => {
-  return new PrismaClient();
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter });
 };
 
 declare global {
