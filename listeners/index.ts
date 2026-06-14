@@ -1,7 +1,8 @@
 import type { App } from '@slack/bolt';
+import { registerDMHandler } from '../src/interfaces/slack/handlers/dmHandler.js';
 
-const registerListeners = (_app: App) => {
-  // Listeners will be registered here as they are implemented
+const registerListeners = (app: App) => {
+  registerDMHandler(app);
 };
 
 export default registerListeners;
