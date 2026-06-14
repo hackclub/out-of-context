@@ -52,7 +52,7 @@ export const registerCommandHandlers = (app: App) => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `<${sub.link}|View Submission>\nQueue Position: #${sub.queuePosition}`,
+            text: `<${sub.link}|View Submission>\nID: \`${sub.id}\` | Queue Position: #${sub.queuePosition}`,
           },
           accessory: {
             type: 'button',
@@ -104,7 +104,7 @@ export const registerCommandHandlers = (app: App) => {
       for (const sub of pending) {
         blocks.push({
           type: 'section',
-          text: { type: 'mrkdwn', text: `<${sub.link}|Submission #${sub.id.substring(0, 8)}...>` },
+          text: { type: 'mrkdwn', text: `<${sub.link}|View Link>\nID: \`${sub.id}\`` },
           accessory: {
             type: 'button',
             text: { type: 'plain_text', text: 'Delete' },
