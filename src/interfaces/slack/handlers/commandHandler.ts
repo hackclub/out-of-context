@@ -1,4 +1,4 @@
-import type { App, SlashCommand } from '@slack/bolt';
+import type { App } from '@slack/bolt';
 import { DeleteSubmission } from '../../../application/use-cases/DeleteSubmission.js';
 import { GetUserStatus } from '../../../application/use-cases/GetUserStatus.js';
 import { PrismaSubmissionRepository } from '../../../infrastructure/repositories/PrismaSubmissionRepository.js';
