@@ -1,0 +1,92 @@
+import type { WebClient } from '@slack/web-api';
+import { config } from '../../config/index.js';
+import { SubmissionStatus } from '../../domain/entities/Submission.js';
+import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
+import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
+
+export interface ReviewSubmissionRequest {
+  submissionId: string;
+  moderatorId: string;
+  action: 'APPROVE' | 'REJECT_OOC' | 'REJECT_EXPLICIT';
+  notes?: string;
+}
+
+export interface ReviewSubmissionResponse {
+  success: boolean;
+  message: string;
+}
+
+export class ReviewSubmission {
+  constructor(
+    private userRepository: IUserRepository,
+    private submissionRepository: ISubmissionRepository,
+    private slackClient: WebClient,
+  ) {}
+
+  async execute(request: ReviewSubmissionRequest): Promise<ReviewSubmissionResponse> {
+    const submission = await this.submissionRepository.findById(request.submissionId);
+
+    if (!submission) {
+      return { success: false, message: 'Submission not found.' };
+    }
+
+    if (submission.status !== SubmissionStatus.PENDING) {
+      return { success: false, message: `Submission is already ${submission.status.toLowerCase()}.` };
+    }
+
+    const submitter = await this.userRepository.findBySlackId(submission.submitterId);
+    if (!submitter) {
+      return { success: false, message: 'Submitter not found.' };
+    }
+
+    if (request.action === 'APPROVE') {
+      submission.approve(request.notes);
+      await this.submissionRepository.save(submission);
+
+      await this.userRepository.updateStats(submitter.slackId, { approved: 1 });
+
+      try {
+        await this.slackClient.chat.postMessage({
+          channel: config.slack.oocChannelId,
+          text: `New OOC post from <@${submitter.slackId}>:\n${submission.slackLink}`,
+          unfurl_links: true,
+        });
+      } catch (error) {
+        console.error('Failed to post to OOC channel:', error);
+      }
+
+      try {
+        await this.slackClient.chat.postMessage({
+          channel: submitter.slackId,
+          text: `Your submission was approved and posted to <#${config.slack.oocChannelId}>!`,
+        });
+      } catch (error) {
+        console.error('Failed to notify submitter:', error);
+      }
+    } else {
+      const isExplicit = request.action === 'REJECT_EXPLICIT';
+      submission.reject(isExplicit, request.notes);
+      await this.submissionRepository.save(submission);
+
+      await this.userRepository.updateStats(submitter.slackId, {
+        rejected: isExplicit ? 0 : 1,
+        explicit: isExplicit ? 1 : 0,
+      });
+
+      const rejectionReason = isExplicit
+        ? 'It was flagged as Explicit/NSFW content.'
+        : 'It was determined not to be "Out of Context" material.';
+
+      try {
+        await this.slackClient.chat.postMessage({
+          channel: submitter.slackId,
+          text: `Your submission was rejected.\n*Reason:* ${rejectionReason}${request.notes ? `\n*Moderator Note:* ${request.notes}` : ''}`,
+        });
+      } catch (error) {
+        console.error('Failed to notify submitter of rejection:', error);
+      }
+    }
+
+    return { success: true, message: `Submission ${request.action.toLowerCase()}d successfully.` };
+  }
+}

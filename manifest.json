@@ -13,13 +13,17 @@
       {
         "command": "/status",
         "description": "Check your submission status and history.",
-        "usage_hint": "",
         "should_escape": false
       },
       {
         "command": "/delete",
         "description": "Delete a pending submission.",
         "usage_hint": "[submission_id]",
+        "should_escape": false
+      },
+      {
+        "command": "/mod-queue",
+        "description": "View and manage the pending moderation queue.",
         "should_escape": false
       }
     ]
