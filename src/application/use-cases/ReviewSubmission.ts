@@ -4,6 +4,7 @@ import { SubmissionStatus } from '../../domain/entities/Submission.js';
 import { User } from '../../domain/entities/User.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
+import { fetchUserProfile } from '../../shared/utils/slack-user-profile.js';
 
 export interface ReviewSubmissionRequest {
   submissionId: string;
@@ -47,9 +48,12 @@ export class ReviewSubmission {
       await this.userRepository.updateStats(submitter.slackId, { approved: 1 });
 
       try {
+        const profile = await fetchUserProfile(this.slackClient, submitter.slackId);
         await this.slackClient.chat.postMessage({
           channel: config.slack.oocChannelId,
-          text: `New OOC post from <@${submitter.slackId}>:\n${submission.slackLink}`,
+          text: submission.slackLink,
+          username: profile.displayName,
+          icon_url: profile.iconUrl,
           unfurl_links: true,
         });
       } catch (error) {

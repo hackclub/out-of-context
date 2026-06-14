@@ -4,6 +4,7 @@ import { Submission, SubmissionStatus } from '../../domain/entities/Submission.j
 import { User, UserRole } from '../../domain/entities/User.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
+import { fetchUserProfile } from '../../shared/utils/slack-user-profile.js';
 
 export interface SubmitLinkRequest {
   slackId: string;
@@ -60,9 +61,12 @@ export class SubmitLink {
 
       if (isTrusted) {
         try {
+          const profile = await fetchUserProfile(this.slackClient, user.slackId);
           await this.slackClient.chat.postMessage({
             channel: config.slack.oocChannelId,
-            text: `New OOC post from <@${user.slackId}> (Trusted User):\n${submission.slackLink}`,
+            text: submission.slackLink,
+            username: profile.displayName,
+            icon_url: profile.iconUrl,
             unfurl_links: true,
           });
 

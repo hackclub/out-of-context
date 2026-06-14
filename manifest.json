@@ -57,6 +57,8 @@
       "bot": [
         "im:history",
         "chat:write",
+        "chat:write.customize",
+        "users:read",
         "channels:history",
         "groups:history",
         "mpim:history",
