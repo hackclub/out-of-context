@@ -30,6 +30,9 @@ export class User {
   get approvedCount(): number {
     return this.props.approvedCount;
   }
+  get rejectedCount(): number {
+    return this.props.rejectedCount;
+  }
   get explicitRejectionCount(): number {
     return this.props.explicitRejectionCount;
   }

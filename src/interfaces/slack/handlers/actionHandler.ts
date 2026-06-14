@@ -13,7 +13,9 @@ export const registerActionHandlers = (app: App) => {
     await ack();
 
     const slackId = body.user.id;
-    const submissionId = (action as any).value;
+    const submissionId = 'value' in action ? action.value : '';
+
+    if (!submissionId) return;
 
     const result = await deleteSubmission.execute({
       slackId,

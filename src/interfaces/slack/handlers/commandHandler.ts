@@ -20,7 +20,9 @@ export const registerCommandHandlers = (app: App) => {
     const status = await getUserStatus.execute(slackId);
 
     if (!status.isRegistered) {
-      await respond("You're not registered as you haven't submitted anything yet! Send me a message link in DM to get started.");
+      await respond(
+        "You're not registered as you haven't submitted anything yet! Send me a message link in DM to get started.",
+      );
       return;
     }
 
@@ -30,7 +32,7 @@ export const registerCommandHandlers = (app: App) => {
         text: {
           type: 'mrkdwn',
           text:
-            '*Your \'Out of Context\' Status*\n' +
+            "*Your 'Out of Context' Status*\n" +
             `Approved: ${status.stats.approved}\n` +
             `Rejected: ${status.stats.rejected}\n` +
             `Explicit: ${status.stats.explicit}\n` +

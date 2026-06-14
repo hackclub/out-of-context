@@ -50,7 +50,7 @@ export class GetUserStatus {
           id: s.id || 'unknown',
           link: s.slackLink,
           queuePosition: pos + 1,
-          createdAt: (s as any).createdAt || new Date(),
+          createdAt: s.createdAt || new Date(),
         };
       })
       .sort((a, b) => a.queuePosition - b.queuePosition);
@@ -61,7 +61,7 @@ export class GetUserStatus {
       isTrusted: user.isTrusted,
       stats: {
         approved: user.approvedCount,
-        rejected: (user as any).rejectedCount || 0, // Casting slightly for safety during transition
+        rejected: user.rejectedCount,
         explicit: user.explicitRejectionCount,
       },
       pendingSubmissions,

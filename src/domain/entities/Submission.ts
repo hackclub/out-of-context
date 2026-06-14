@@ -36,6 +36,9 @@ export class Submission {
   get submitterId(): string {
     return this.props.submitterId;
   }
+  get createdAt(): Date | undefined {
+    return this.props.createdAt;
+  }
   get deletedAt(): Date | undefined {
     return this.props.deletedAt;
   }

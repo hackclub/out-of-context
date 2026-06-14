@@ -66,10 +66,10 @@ export class SubmitLink {
         status: 'pending',
         message: "Your submission has been received and is waiting for moderator review. dw won't take long",
       };
-    } catch (error: any) {
+    } catch (error) {
       return {
         status: 'error',
-        message: error.message || 'An unexpected error occurred.',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred.',
       };
     }
   }
