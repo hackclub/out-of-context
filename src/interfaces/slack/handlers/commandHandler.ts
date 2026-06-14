@@ -26,54 +26,102 @@ export const registerCommandHandlers = (app: App) => {
       return;
     }
 
-    const sections: any[] = [
+    const totalRejected = status.stats.rejected + status.stats.explicit;
+    const blocks: any[] = [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '#out-of-context Profile',
+        },
+      },
       {
         type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text:
-            "*Your 'Out of Context' Status*\n" +
-            `Approved: ${status.stats.approved}\n` +
-            `Rejected: ${status.stats.rejected}\n` +
-            `Explicit: ${status.stats.explicit}\n` +
-            `Trusted: ${status.isTrusted ? 'Yes' : 'No'}\n` +
-            `Banned: ${status.isBanned ? 'Yes' : 'No'}`,
-        },
+        fields: [
+          {
+            type: 'mrkdwn',
+            text: `*Status*\n ${status.isBanned ? 'Banned' : status.isTrusted ? 'Trusted Contributor' : 'Member (not trusted)'}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Approved*\n ${status.stats.approved}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Rejected*\n ${totalRejected} *(${status.stats.explicit} explicit - ${status.stats.rejected} OOC)*`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Pending*\n ${status.pendingSubmissions.length}`,
+          },
+        ],
       },
     ];
 
     if (status.pendingSubmissions.length > 0) {
-      sections.push({ type: 'divider' });
-      sections.push({
-        type: 'section',
-        text: { type: 'mrkdwn', text: '*Pending Submissions*' },
+      blocks.push({ type: 'divider' });
+      blocks.push({
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: 'Pending Review Queue',
+          },
+        ],
       });
 
       for (const sub of status.pendingSubmissions) {
-        sections.push({
+        blocks.push({
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `<${sub.link}|View Submission>\nID: \`${sub.id}\` | Queue Position: #${sub.queuePosition}`,
+            text: `*#${sub.queuePosition} in queue*\n\`${sub.id}\``,
           },
-          accessory: {
-            type: 'button',
-            text: { type: 'plain_text', text: 'Delete' },
-            style: 'danger',
-            action_id: 'delete_submission',
-            value: sub.id,
-          },
+        });
+        blocks.push({
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: {
+                type: 'plain_text',
+                text: 'View Submission',
+              },
+              url: sub.link,
+            },
+            {
+              type: 'button',
+              text: {
+                type: 'plain_text',
+                text: 'Delete',
+              },
+              style: 'danger',
+              action_id: 'delete_submission',
+              value: sub.id,
+              confirm: {
+                title: { type: 'plain_text', text: 'Are you sure?' },
+                text: { type: 'mrkdwn', text: 'Do you really want to delete this submission?' },
+                confirm: { type: 'plain_text', text: 'Yes, delete it' },
+                deny: { type: 'plain_text', text: 'Cancel' },
+              },
+            },
+          ],
         });
       }
     } else {
-      sections.push({ type: 'divider' });
-      sections.push({
-        type: 'section',
-        text: { type: 'mrkdwn', text: '_You have no pending submissions._' },
+      blocks.push({ type: 'divider' });
+      blocks.push({
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: '_You have no pending submissions._',
+          },
+        ],
       });
     }
 
-    await respond({ blocks: sections });
+    await respond({ blocks });
   });
 
   /**
@@ -98,18 +146,35 @@ export const registerCommandHandlers = (app: App) => {
 
       const blocks: any[] = [
         {
-          type: 'section',
-          text: { type: 'mrkdwn', text: '*Select a submission to delete:*' },
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: 'Remove Submission',
+          },
         },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: 'Select a submission to withdraw from the moderation queue:',
+          },
+        },
+        { type: 'divider' },
       ];
 
       for (const sub of pending) {
         blocks.push({
           type: 'section',
-          text: { type: 'mrkdwn', text: `<${sub.link}|View Link>\nID: \`${sub.id}\`` },
+          text: {
+            type: 'mrkdwn',
+            text: `*#${sub.queuePosition} in queue*\n\`${sub.id}\``,
+          },
           accessory: {
             type: 'button',
-            text: { type: 'plain_text', text: 'Delete' },
+            text: {
+              type: 'plain_text',
+              text: 'Delete',
+            },
             style: 'danger',
             action_id: 'delete_submission',
             value: sub.id,
