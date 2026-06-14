@@ -1,7 +1,7 @@
 import type { WebClient } from '@slack/web-api';
 import { config } from '../../config/index.js';
 import { Submission, SubmissionStatus } from '../../domain/entities/Submission.js';
-import { User } from '../../domain/entities/User.js';
+import { User, UserRole } from '../../domain/entities/User.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
 
@@ -32,6 +32,7 @@ export class SubmitLink {
           slackId: request.slackId,
           isTrusted: false,
           isBanned: false,
+          role: UserRole.USER,
           approvedCount: 0,
           rejectedCount: 0,
           explicitRejectionCount: 0,

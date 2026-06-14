@@ -1,5 +1,5 @@
 import type { WebClient } from '@slack/web-api';
-import { User } from '../../domain/entities/User.js';
+import { User, UserRole } from '../../domain/entities/User.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
 
 export interface UpdateUserTrustRequest {
@@ -29,6 +29,7 @@ export class UpdateUserTrust {
         isBanned: false,
         approvedCount: 0,
         rejectedCount: 0,
+        role: UserRole.USER,
         explicitRejectionCount: 0,
       });
     } else {

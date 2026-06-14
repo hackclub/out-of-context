@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { describe, it, mock } from 'node:test';
 import { SubmitLink } from '../../../src/application/use-cases/SubmitLink.js';
 import { SubmissionStatus } from '../../../src/domain/entities/Submission.js';
-import { User } from '../../../src/domain/entities/User.js';
+import { User, UserRole } from '../../../src/domain/entities/User.js';
 import type { ISubmissionRepository } from '../../../src/domain/interfaces/ISubmissionRepository.js';
 import type { IUserRepository } from '../../../src/domain/interfaces/IUserRepository.js';
 
@@ -42,6 +42,7 @@ describe('SubmitLink Use Case', () => {
   it('should reject submission if user is banned', async () => {
     const bannedUser = new User({
       slackId: 'U123',
+      role: UserRole.USER,
       isTrusted: false,
       isBanned: true,
       approvedCount: 0,
@@ -72,6 +73,7 @@ describe('SubmitLink Use Case', () => {
   it('should automatically approve if user is trusted', async () => {
     const trustedUser = new User({
       slackId: 'U123',
+      role: UserRole.USER,
       isTrusted: true,
       isBanned: false,
       approvedCount: 10,

@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { describe, it, mock } from 'node:test';
 import { GetUserStatus } from '../../../src/application/use-cases/GetUserStatus.js';
 import { SubmissionStatus } from '../../../src/domain/entities/Submission.js';
-import { User } from '../../../src/domain/entities/User.js';
+import { User, UserRole } from '../../../src/domain/entities/User.js';
 
 describe('GetUserStatus Use Case', () => {
   it('should return empty stats for unregistered user', async () => {
@@ -19,6 +19,7 @@ describe('GetUserStatus Use Case', () => {
   it('should return correct stats and pending queue for registered user', async () => {
     const user = new User({
       slackId: 'U123',
+      role: UserRole.USER,
       isTrusted: true,
       isBanned: false,
       approvedCount: 5,

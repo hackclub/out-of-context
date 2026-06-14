@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
 import { config } from '../../../src/config/index.js';
-import { User } from '../../../src/domain/entities/User.js';
+import { User, UserRole } from '../../../src/domain/entities/User.js';
 
 describe('User Entity', () => {
   const mockConfig = {
@@ -17,6 +17,7 @@ describe('User Entity', () => {
   it('should be eligible for trust if approved count meets threshold', () => {
     const user = new User({
       slackId: 'U123',
+      role: UserRole.USER,
       isTrusted: false,
       isBanned: false,
       approvedCount: 5,
@@ -30,6 +31,7 @@ describe('User Entity', () => {
   it('should NOT be eligible for trust if they have explicit rejections', () => {
     const user = new User({
       slackId: 'U123',
+      role: UserRole.USER,
       isTrusted: false,
       isBanned: false,
       approvedCount: 10,
@@ -43,6 +45,7 @@ describe('User Entity', () => {
   it('should be flagged for ban if explicit rejections meet threshold', () => {
     const user = new User({
       slackId: 'U123',
+      role: UserRole.USER,
       isTrusted: false,
       isBanned: false,
       approvedCount: 0,

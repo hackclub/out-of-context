@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { describe, it, mock } from 'node:test';
 import { ReviewSubmission } from '../../../src/application/use-cases/ReviewSubmission.js';
 import { Submission, SubmissionStatus } from '../../../src/domain/entities/Submission.js';
-import { User } from '../../../src/domain/entities/User.js';
+import { User, UserRole } from '../../../src/domain/entities/User.js';
 
 describe('ReviewSubmission Use Case', () => {
   const mockSubmission = new Submission({
@@ -14,6 +14,7 @@ describe('ReviewSubmission Use Case', () => {
 
   const mockSubmitter = new User({
     slackId: 'U_SUBMITTER',
+    role: UserRole.USER,
     isTrusted: false,
     isBanned: false,
     approvedCount: 0,
