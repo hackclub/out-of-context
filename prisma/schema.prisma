@@ -16,8 +16,15 @@ enum SubmissionStatus {
   REJECTED_EXPLICIT
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
 model User {
   slackId               String   @id
+  role                  UserRole @default(USER)
   isTrusted             Boolean  @default(false)
   isBanned              Boolean  @default(false)
   approvedCount         Int      @default(0)

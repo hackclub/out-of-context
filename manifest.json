@@ -11,30 +11,42 @@
     },
     "slash_commands": [
       {
-        "command": "/status",
+        "command": "/b-status",
         "description": "Check your submission status and history.",
         "should_escape": false
       },
       {
-        "command": "/delete",
+        "command": "/b-delete",
         "description": "Delete a pending submission.",
         "usage_hint": "[submission_id]",
         "should_escape": false
       },
       {
-        "command": "/mod-queue",
+        "command": "/b-mod-queue",
         "description": "View and manage the pending moderation queue.",
         "should_escape": false
       },
       {
-        "command": "/grant-trust",
+        "command": "/b-grant-trust",
         "description": "Grant a user Trusted status (bypass queue).",
         "usage_hint": "@user",
         "should_escape": false
       },
       {
-        "command": "/revoke-trust",
+        "command": "/b-revoke-trust",
         "description": "Revoke a user's Trusted status.",
+        "usage_hint": "@user",
+        "should_escape": false
+      },
+      {
+        "command": "/b-grant-admin",
+        "description": "Grant a user Admin privileges.",
+        "usage_hint": "@user",
+        "should_escape": false
+      },
+      {
+        "command": "/b-revoke-admin",
+        "description": "Revoke a user's Admin privileges.",
         "usage_hint": "@user",
         "should_escape": false
       }

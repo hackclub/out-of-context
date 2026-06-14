@@ -1,7 +1,14 @@
 import type { Config } from '../../config/index.js';
 
+export enum UserRole {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+}
+
 export interface UserProps {
   slackId: string;
+  role: UserRole;
   isTrusted: boolean;
   isBanned: boolean;
   approvedCount: number;
@@ -21,8 +28,11 @@ export class User {
   get slackId(): string {
     return this.props.slackId;
   }
+  get role(): UserRole {
+    return this.props.role;
+  }
   get isTrusted(): boolean {
-    return this.props.isTrusted;
+    return this.props.isTrusted || this.isAdmin();
   }
   get isBanned(): boolean {
     return this.props.isBanned;
@@ -35,6 +45,19 @@ export class User {
   }
   get explicitRejectionCount(): number {
     return this.props.explicitRejectionCount;
+  }
+
+  isAdmin(): boolean {
+    return this.props.role === UserRole.ADMIN || this.props.role === UserRole.SUPER_ADMIN;
+  }
+
+  isSuperAdmin(): boolean {
+    return this.props.role === UserRole.SUPER_ADMIN;
+  }
+
+  changeRole(newRole: UserRole): void {
+    this.props.role = newRole;
+    this.props.updatedAt = new Date();
   }
 
   /**

@@ -15,6 +15,7 @@ export interface Config {
   };
   slack: {
     oocChannelId: string;
+    superAdminId: string;
   };
 }
 
@@ -35,5 +36,6 @@ export const config: Config = {
   },
   slack: {
     oocChannelId: process.env.SLACK_OOC_CHANNEL_ID || '',
+    superAdminId: process.env.SLACK_SUPER_ADMIN_ID || '',
   },
 };

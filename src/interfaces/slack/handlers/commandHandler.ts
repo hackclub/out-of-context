@@ -26,6 +26,15 @@ export const registerCommandHandlers = (app: App) => {
       return;
     }
 
+    const user = await userRepository.findBySlackId(slackId);
+    const roleLabel = user?.isSuperAdmin()
+      ? 'Super Admin'
+      : user?.isAdmin()
+        ? 'Admin'
+        : status.isTrusted
+          ? 'Trusted Contributor'
+          : 'Member (not trusted)';
+
     const totalRejected = status.stats.rejected + status.stats.explicit;
     const blocks: any[] = [
       {
@@ -40,7 +49,7 @@ export const registerCommandHandlers = (app: App) => {
         fields: [
           {
             type: 'mrkdwn',
-            text: `*Status*\n ${status.isBanned ? 'Banned' : status.isTrusted ? 'Trusted Contributor' : 'Member (not trusted)'}`,
+            text: `*Status*\n ${status.isBanned ? 'Banned' : roleLabel}`,
           },
           {
             type: 'mrkdwn',

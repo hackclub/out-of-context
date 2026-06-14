@@ -1,6 +1,8 @@
 import type { App } from '@slack/bolt';
 import { ReviewSubmission } from '../../../application/use-cases/ReviewSubmission.js';
+import { UpdateUserRole } from '../../../application/use-cases/UpdateUserRole.js';
 import { UpdateUserTrust } from '../../../application/use-cases/UpdateUserTrust.js';
+import { UserRole } from '../../../domain/entities/User.js';
 import { PrismaSubmissionRepository } from '../../../infrastructure/repositories/PrismaSubmissionRepository.js';
 import { PrismaUserRepository } from '../../../infrastructure/repositories/PrismaUserRepository.js';
 
@@ -9,13 +11,28 @@ const submissionRepository = new PrismaSubmissionRepository();
 
 export const registerModeratorHandlers = (app: App) => {
   const reviewSubmission = new ReviewSubmission(userRepository, submissionRepository, app.client);
+  const updateUserRole = new UpdateUserRole(userRepository, app.client);
+
+  const isAdmin = async (slackId: string) => {
+    const user = await userRepository.findBySlackId(slackId);
+    return user?.isAdmin() || false;
+  };
+
+  const isSuperAdmin = async (slackId: string) => {
+    const user = await userRepository.findBySlackId(slackId);
+    return user?.isSuperAdmin() || false;
+  };
 
   /**
-   * Temporary command to view and manage the queue
-   * In a real app, this would be a secure dashboard or restricted command.
+   * /b-mod-queue
    */
   app.command('/b-mod-queue', async ({ ack, body, respond }) => {
     await ack();
+
+    if (!(await isAdmin(body.user_id))) {
+      await respond('⛔ You do not have permission to access the moderation queue.');
+      return;
+    }
 
     const pending = await submissionRepository.getPendingQueue();
 
@@ -27,8 +44,18 @@ export const registerModeratorHandlers = (app: App) => {
     const blocks: any[] = [
       {
         type: 'header',
-        text: { type: 'plain_text', text: '📋 Moderation Queue' },
+        text: { type: 'plain_text', text: '📋 Moderation Queue', emoji: true },
       },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `There are currently *${pending.length}* submissions waiting for review.`,
+          },
+        ],
+      },
+      { type: 'divider' },
     ];
 
     for (const sub of pending) {
@@ -36,7 +63,7 @@ export const registerModeratorHandlers = (app: App) => {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*Submission from <@${sub.submitterId}>*\nLink: ${sub.slackLink}`,
+          text: `*Submission from <@${sub.submitterId}>*\n<${sub.slackLink}|View Original Message>`,
         },
       });
       blocks.push({
@@ -44,25 +71,29 @@ export const registerModeratorHandlers = (app: App) => {
         elements: [
           {
             type: 'button',
-            text: { type: 'plain_text', text: 'Approve' },
+            text: { type: 'plain_text', text: '✅ Approve', emoji: true },
             style: 'primary',
             action_id: 'approve_submission',
             value: sub.id,
           },
           {
             type: 'button',
-            text: { type: 'plain_text', text: 'Reject (OOC)' },
+            text: { type: 'plain_text', text: '✖️ Reject (OOC)', emoji: true },
             action_id: 'reject_ooc',
             value: sub.id,
           },
           {
             type: 'button',
-            text: { type: 'plain_text', text: 'Reject (Explicit)' },
+            text: { type: 'plain_text', text: '🚫 Reject (Explicit)', emoji: true },
             style: 'danger',
             action_id: 'reject_explicit',
             value: sub.id,
           },
         ],
+      });
+      blocks.push({
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `ID: \`${sub.id}\`` }],
       });
       blocks.push({ type: 'divider' });
     }
@@ -71,10 +102,16 @@ export const registerModeratorHandlers = (app: App) => {
   });
 
   /**
-   * /grant-trust
+   * /b-grant-trust
    */
-  app.command('/b-grant-trust', async ({ ack, body, client, logger }) => {
+  app.command('/b-grant-trust', async ({ ack, body, client, logger, respond }) => {
     await ack();
+
+    if (!(await isAdmin(body.user_id))) {
+      await respond('⛔ You do not have permission to manage user trust.');
+      return;
+    }
+
     try {
       await client.views.open({
         trigger_id: body.trigger_id,
@@ -82,14 +119,10 @@ export const registerModeratorHandlers = (app: App) => {
           type: 'modal',
           callback_id: 'user_trust_modal',
           private_metadata: JSON.stringify({ action: 'GRANT' }),
-          title: { type: 'plain_text', text: 'OOC Moderation' },
-          submit: { type: 'plain_text', text: 'Grant Trust' },
+          title: { type: 'plain_text', text: 'OOC: Grant Trust' },
+          submit: { type: 'plain_text', text: 'Confirm Grant' },
           close: { type: 'plain_text', text: 'Cancel' },
           blocks: [
-            {
-              type: 'header',
-              text: { type: 'plain_text', text: 'Grant Trusted Status' },
-            },
             {
               type: 'section',
               text: {
@@ -113,7 +146,7 @@ export const registerModeratorHandlers = (app: App) => {
               elements: [
                 {
                   type: 'mrkdwn',
-                  text: 'The user will be notified via DM when trust is granted.',
+                  text: 'ℹ️ The user will receive a notification DM when trust is granted.',
                 },
               ],
             },
@@ -126,10 +159,16 @@ export const registerModeratorHandlers = (app: App) => {
   });
 
   /**
-   * /revoke-trust
+   * /b-revoke-trust
    */
-  app.command('/b-revoke-trust', async ({ ack, body, client, logger }) => {
+  app.command('/b-revoke-trust', async ({ ack, body, client, logger, respond }) => {
     await ack();
+
+    if (!(await isAdmin(body.user_id))) {
+      await respond('⛔ You do not have permission to manage user trust.');
+      return;
+    }
+
     try {
       await client.views.open({
         trigger_id: body.trigger_id,
@@ -137,14 +176,10 @@ export const registerModeratorHandlers = (app: App) => {
           type: 'modal',
           callback_id: 'user_trust_modal',
           private_metadata: JSON.stringify({ action: 'REVOKE' }),
-          title: { type: 'plain_text', text: 'OOC Moderation' },
-          submit: { type: 'plain_text', text: 'Revoke Trust' },
+          title: { type: 'plain_text', text: 'OOC: Revoke Trust' },
+          submit: { type: 'plain_text', text: 'Confirm Revoke' },
           close: { type: 'plain_text', text: 'Cancel' },
           blocks: [
-            {
-              type: 'header',
-              text: { type: 'plain_text', text: 'Revoke Trusted Status' },
-            },
             {
               type: 'section',
               text: {
@@ -168,7 +203,7 @@ export const registerModeratorHandlers = (app: App) => {
               elements: [
                 {
                   type: 'mrkdwn',
-                  text: 'The user will be notified via DM when trust is revoked.',
+                  text: 'ℹ️ The user will receive a notification DM when trust is revoked.',
                 },
               ],
             },
@@ -181,7 +216,147 @@ export const registerModeratorHandlers = (app: App) => {
   });
 
   /**
-   * Modal submission handler
+   * /b-grant-admin
+   */
+  app.command('/b-grant-admin', async ({ ack, body, client, logger, respond }) => {
+    await ack();
+
+    if (!(await isSuperAdmin(body.user_id))) {
+      await respond('⛔ Only Super Admins can grant admin privileges.');
+      return;
+    }
+
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: {
+          type: 'modal',
+          callback_id: 'admin_role_modal',
+          private_metadata: JSON.stringify({ action: 'GRANT' }),
+          title: { type: 'plain_text', text: 'OOC Administration' },
+          submit: { type: 'plain_text', text: 'Grant Admin' },
+          close: { type: 'plain_text', text: 'Cancel' },
+          blocks: [
+            {
+              type: 'header',
+              text: { type: 'plain_text', text: 'Grant Admin Privileges' },
+            },
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: 'Promoting a user to *Admin* allows them to:\n- View and manage the moderation queue\n- Grant/Revoke trust status to users\n\n_Use this for trusted community moderators._',
+              },
+            },
+            { type: 'divider' },
+            {
+              type: 'section',
+              block_id: 'user_select_block',
+              text: { type: 'mrkdwn', text: '*Select User*' },
+              accessory: {
+                type: 'users_select',
+                action_id: 'selected_user',
+                placeholder: { type: 'plain_text', text: 'Search members...' },
+              },
+            },
+          ],
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to open grant-admin modal', error);
+    }
+  });
+
+  /**
+   * /b-revoke-admin
+   */
+  app.command('/b-revoke-admin', async ({ ack, body, client, logger, respond }) => {
+    await ack();
+
+    if (!(await isSuperAdmin(body.user_id))) {
+      await respond('⛔ Only Super Admins can revoke admin privileges.');
+      return;
+    }
+
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: {
+          type: 'modal',
+          callback_id: 'admin_role_modal',
+          private_metadata: JSON.stringify({ action: 'REVOKE' }),
+          title: { type: 'plain_text', text: 'OOC Administration' },
+          submit: { type: 'plain_text', text: 'Revoke Admin' },
+          close: { type: 'plain_text', text: 'Cancel' },
+          blocks: [
+            {
+              type: 'header',
+              text: { type: 'plain_text', text: 'Revoke Admin Privileges' },
+            },
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: 'Revoking *Admin* privileges will demote the user back to a regular member status.',
+              },
+            },
+            { type: 'divider' },
+            {
+              type: 'section',
+              block_id: 'user_select_block',
+              text: { type: 'mrkdwn', text: '*Select User*' },
+              accessory: {
+                type: 'users_select',
+                action_id: 'selected_user',
+                placeholder: { type: 'plain_text', text: 'Search members...' },
+              },
+            },
+          ],
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to open revoke-admin modal', error);
+    }
+  });
+
+  /**
+   * Admin Role Modal submission handler
+   */
+  app.view('admin_role_modal', async ({ ack, body, view, client, logger }) => {
+    await ack();
+
+    const metadata = JSON.parse(view.private_metadata);
+    const action = metadata.action; // 'GRANT' or 'REVOKE'
+    const superAdminId = body.user.id;
+
+    const values = view.state.values;
+    const targetUserId = values.user_select_block.selected_user.selected_user;
+
+    if (!targetUserId) {
+      logger.error('No user selected in admin role modal');
+      return;
+    }
+
+    const newRole = action === 'GRANT' ? UserRole.ADMIN : UserRole.USER;
+
+    const result = await updateUserRole.execute({
+      targetSlackId: targetUserId,
+      newRole,
+      actorSlackId: superAdminId,
+    });
+
+    try {
+      await client.chat.postMessage({
+        channel: superAdminId,
+        text: result.message,
+      });
+    } catch (error) {
+      logger.error('Failed to notify super admin of role update', error);
+    }
+  });
+
+  /**
+   * Modal submission handler for Trust
    */
   app.view('user_trust_modal', async ({ ack, body, view, client, logger }) => {
     await ack();
@@ -189,6 +364,14 @@ export const registerModeratorHandlers = (app: App) => {
     const metadata = JSON.parse(view.private_metadata);
     const action = metadata.action; // 'GRANT' or 'REVOKE'
     const moderatorId = body.user.id;
+
+    if (!(await isAdmin(moderatorId))) {
+      await client.chat.postMessage({
+        channel: moderatorId,
+        text: '⛔ You do not have permission to perform this action.',
+      });
+      return;
+    }
 
     const values = view.state.values;
     const targetUserId = values.user_select_block.selected_user.selected_user;
@@ -210,7 +393,7 @@ export const registerModeratorHandlers = (app: App) => {
     try {
       await client.chat.postMessage({
         channel: moderatorId,
-        text: `${result.message}`,
+        text: result.message,
       });
     } catch (error) {
       logger.error('Failed to notify moderator of trust update', error);
@@ -230,18 +413,30 @@ export const registerModeratorHandlers = (app: App) => {
 
   app.action('approve_submission', async ({ ack, body, action, respond }) => {
     await ack();
+    if (!(await isAdmin(body.user.id))) {
+      await respond('⛔ You do not have permission to review submissions.');
+      return;
+    }
     const result = await handleReview((action as any).value, body.user.id, 'APPROVE');
     await respond(result.message);
   });
 
   app.action('reject_ooc', async ({ ack, body, action, respond }) => {
     await ack();
+    if (!(await isAdmin(body.user.id))) {
+      await respond('⛔ You do not have permission to review submissions.');
+      return;
+    }
     const result = await handleReview((action as any).value, body.user.id, 'REJECT_OOC');
     await respond(result.message);
   });
 
   app.action('reject_explicit', async ({ ack, body, action, respond }) => {
     await ack();
+    if (!(await isAdmin(body.user.id))) {
+      await respond('⛔ You do not have permission to review submissions.');
+      return;
+    }
     const result = await handleReview((action as any).value, body.user.id, 'REJECT_EXPLICIT');
     await respond(result.message);
   });

@@ -1,4 +1,5 @@
-import { User } from '../../domain/entities/User.js';
+import { config } from '../../config/index.js';
+import { User, UserRole } from '../../domain/entities/User.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
 import db from '../prisma.js';
 
@@ -10,8 +11,16 @@ export class PrismaUserRepository implements IUserRepository {
 
     if (!user) return null;
 
+    // Bootstrap Super Admin if configured
+    let role = user.role as UserRole;
+    if (slackId === config.slack.superAdminId && role !== UserRole.SUPER_ADMIN) {
+      role = UserRole.SUPER_ADMIN;
+      // Optionally save it back to DB, but for now we just return the object with the correct role
+    }
+
     return new User({
       slackId: user.slackId,
+      role: role,
       isTrusted: user.isTrusted,
       isBanned: user.isBanned,
       approvedCount: user.approvedCount,
@@ -27,6 +36,7 @@ export class PrismaUserRepository implements IUserRepository {
     const saved = await db.user.upsert({
       where: { slackId: data.slackId },
       update: {
+        role: data.role,
         isTrusted: data.isTrusted,
         isBanned: data.isBanned,
         approvedCount: data.approvedCount,
@@ -35,6 +45,7 @@ export class PrismaUserRepository implements IUserRepository {
       },
       create: {
         slackId: data.slackId,
+        role: data.role,
         isTrusted: data.isTrusted,
         isBanned: data.isBanned,
         approvedCount: data.approvedCount,
@@ -43,7 +54,10 @@ export class PrismaUserRepository implements IUserRepository {
       },
     });
 
-    return new User(saved);
+    return new User({
+      ...saved,
+      role: saved.role as UserRole,
+    });
   }
 
   async updateStats(
