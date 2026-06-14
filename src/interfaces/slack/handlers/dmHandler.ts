@@ -6,9 +6,10 @@ import { extractSlackLink } from '../../../shared/utils/slack-link-validator.js'
 
 const userRepository = new PrismaUserRepository();
 const submissionRepository = new PrismaSubmissionRepository();
-const submitLinkUseCase = new SubmitLink(userRepository, submissionRepository);
 
 export const registerDMHandler = (app: App) => {
+  const submitLinkUseCase = new SubmitLink(userRepository, submissionRepository, app.client);
+
   app.message(async ({ message, say, logger }) => {
     if (message.channel_type !== 'im') return;
 
@@ -27,8 +28,6 @@ export const registerDMHandler = (app: App) => {
       );
       return;
     }
-
-    logger.info(`Received submission from ${slackId}: ${link}`);
 
     const response = await submitLinkUseCase.execute({
       slackId,

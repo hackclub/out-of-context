@@ -8,6 +8,11 @@ import type { IUserRepository } from '../../../src/domain/interfaces/IUserReposi
 
 describe('SubmitLink Use Case', () => {
   const validLink = 'https://workspace.slack.com/archives/C12345/p1620000000000000';
+  const mockSlackClient = {
+    chat: {
+      postMessage: mock.fn(async () => ({})),
+    },
+  };
 
   it('should create a pending submission for a new user', async () => {
     const mockUserRepo = {
@@ -23,7 +28,7 @@ describe('SubmitLink Use Case', () => {
       }),
     } as unknown as ISubmissionRepository;
 
-    const useCase = new SubmitLink(mockUserRepo, mockSubmissionRepo);
+    const useCase = new SubmitLink(mockUserRepo, mockSubmissionRepo, mockSlackClient as any);
     const response = await useCase.execute({
       slackId: 'U123',
       slackLink: validLink,
@@ -54,7 +59,7 @@ describe('SubmitLink Use Case', () => {
       save: mock.fn(),
     } as unknown as ISubmissionRepository;
 
-    const useCase = new SubmitLink(mockUserRepo, mockSubmissionRepo);
+    const useCase = new SubmitLink(mockUserRepo, mockSubmissionRepo, mockSlackClient as any);
     const response = await useCase.execute({
       slackId: 'U123',
       slackLink: validLink,
@@ -77,14 +82,14 @@ describe('SubmitLink Use Case', () => {
     const mockUserRepo = {
       findBySlackId: mock.fn(async () => trustedUser),
       save: mock.fn(),
-      updateStats: mock.fn(),
+      updateStats: mock.fn(async () => {}),
     } as unknown as IUserRepository;
 
     const mockSubmissionRepo = {
       save: mock.fn(async (s: any) => ({ ...s.toJSON(), id: 'sub-456' })),
     } as unknown as ISubmissionRepository;
 
-    const useCase = new SubmitLink(mockUserRepo, mockSubmissionRepo);
+    const useCase = new SubmitLink(mockUserRepo, mockSubmissionRepo, mockSlackClient as any);
     const response = await useCase.execute({
       slackId: 'U123',
       slackLink: validLink,
@@ -93,5 +98,7 @@ describe('SubmitLink Use Case', () => {
     assert.strictEqual(response.status, 'approved');
     const savedSubmission = (mockSubmissionRepo.save as any).mock.calls[0].arguments[0];
     assert.strictEqual(savedSubmission.status, SubmissionStatus.APPROVED);
+
+    assert.strictEqual(mockSlackClient.chat.postMessage.mock.callCount(), 1);
   });
 });

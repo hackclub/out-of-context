@@ -25,6 +25,18 @@
         "command": "/mod-queue",
         "description": "View and manage the pending moderation queue.",
         "should_escape": false
+      },
+      {
+        "command": "/grant-trust",
+        "description": "Grant a user Trusted status (bypass queue).",
+        "usage_hint": "@user",
+        "should_escape": false
+      },
+      {
+        "command": "/revoke-trust",
+        "description": "Revoke a user's Trusted status.",
+        "usage_hint": "@user",
+        "should_escape": false
       }
     ]
   },
