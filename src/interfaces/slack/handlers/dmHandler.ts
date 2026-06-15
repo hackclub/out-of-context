@@ -10,30 +10,59 @@ const submissionRepository = new PrismaSubmissionRepository();
 export const registerDMHandler = (app: App) => {
   const submitLinkUseCase = new SubmitLink(userRepository, submissionRepository, app.client);
 
-  app.message(async ({ message, say, logger }) => {
+  app.message(async ({ message, say }) => {
     if (message.channel_type !== 'im') return;
 
-    if (!('text' in message) || !message.text) return;
-
-    const slackId = message.user as string;
+    const slackId = (message as any).user as string | undefined;
     if (!slackId) return;
 
-    const text = (message as any).text || '';
+    const msg = message as any;
+
+    if (msg.subtype === 'file_share' && msg.files?.length) {
+      const imageFile = msg.files.find((f: any) => f.mimetype?.startsWith('image/'));
+      if (imageFile?.permalink) {
+        const response = await submitLinkUseCase.execute({
+          slackId,
+          slackLink: imageFile.permalink,
+          originalImageUrl: imageFile.url_private || undefined,
+        });
+        await say(response.message);
+        return;
+      }
+    }
+
+    if (msg.attachments?.length) {
+      const attachment = msg.attachments[0];
+      const fromUrl: string | undefined = attachment.from_url;
+
+      if (fromUrl?.includes('slack.com/archives/')) {
+        const imageFile =
+          attachment.files?.find((f: any) => f.mimetype?.startsWith('image/')) ||
+          msg.files?.find((f: any) => f.mimetype?.startsWith('image/'));
+        const response = await submitLinkUseCase.execute({
+          slackId,
+          slackLink: fromUrl,
+          originalText: attachment.text || attachment.fallback || undefined,
+          originalAuthorId: attachment.author_id || undefined,
+          originalImageUrl: attachment.image_url || imageFile?.url_private || undefined,
+        });
+        await say(response.message);
+        return;
+      }
+    }
+
+    const text = msg.text as string | undefined;
+    if (!text) return;
 
     const link = extractSlackLink(text);
-
     if (!link) {
       await say(
-        "Hello! Please send me a Slack message link to submit it to #out-of-context. If you're looking for help, try `/status`.",
+        "Hello! Please forward or send me a Slack message link to submit it to #out-of-context. If you're looking for help, try `/b-status`.",
       );
       return;
     }
 
-    const response = await submitLinkUseCase.execute({
-      slackId,
-      slackLink: link,
-    });
-
+    const response = await submitLinkUseCase.execute({ slackId, slackLink: link });
     await say(response.message);
   });
 };

@@ -3,7 +3,7 @@ import type { WebClient } from '@slack/web-api';
 export interface FetchedMessage {
   text: string;
   authorId?: string;
-  blocks?: any[];
+  imageUrl?: string;
 }
 
 export async function fetchOriginalMessage(
@@ -17,12 +17,10 @@ export async function fetchOriginalMessage(
   const ts = `${match[2]}.${match[3]}`;
 
   try {
-    // Auto-join public channels so we can read their history
     if (channelId.startsWith('C')) {
       try {
         await client.conversations.join({ channel: channelId });
       } catch {
-        // Already in channel or not joinable — try fetching anyway
       }
     }
 
@@ -37,10 +35,15 @@ export async function fetchOriginalMessage(
     const message = result.messages?.[0];
     if (!message) return null;
 
+    const file = (message as any).files?.[0];
+    const imageUrl = file?.mimetype?.startsWith('image/')
+      ? (file.url_private as string | undefined)
+      : undefined;
+
     return {
       text: message.text || '',
       authorId: message.user,
-      blocks: (message.blocks as any[]) || undefined,
+      imageUrl,
     };
   } catch (error) {
     console.error('[ooc] Failed to fetch original message:', error);

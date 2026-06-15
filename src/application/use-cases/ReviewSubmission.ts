@@ -48,7 +48,15 @@ export class ReviewSubmission {
       await this.userRepository.updateStats(submitter.slackId, { approved: 1 });
 
       try {
-        await postToOocChannel(this.slackClient, submission.slackLink, submitter.slackId);
+        const originalContent =
+          submission.originalText || submission.originalImageUrl
+            ? {
+                text: submission.originalText ?? '',
+                authorId: submission.originalAuthorId ?? submission.submitterId,
+                imageUrl: submission.originalImageUrl,
+              }
+            : undefined;
+        await postToOocChannel(this.slackClient, submission.slackLink, submitter.slackId, originalContent, this.submissionRepository, submission.id);
       } catch (error) {
         console.error('Failed to post to OOC channel:', error);
       }

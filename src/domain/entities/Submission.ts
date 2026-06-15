@@ -11,6 +11,9 @@ export interface SubmissionProps {
   status: SubmissionStatus;
   submitterId: string;
   moderatorNotes?: string;
+  originalText?: string;
+  originalAuthorId?: string;
+  originalImageUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date;
@@ -36,6 +39,15 @@ export class Submission {
   get submitterId(): string {
     return this.props.submitterId;
   }
+  get originalText(): string | undefined {
+    return this.props.originalText;
+  }
+  get originalAuthorId(): string | undefined {
+    return this.props.originalAuthorId;
+  }
+  get originalImageUrl(): string | undefined {
+    return this.props.originalImageUrl;
+  }
   get createdAt(): Date | undefined {
     return this.props.createdAt;
   }
@@ -44,7 +56,8 @@ export class Submission {
   }
 
   private validateLink(link: string) {
-    const slackLinkRegex = /https:\/\/[a-zA-Z0-9-]+\.slack\.com\/archives\/[A-Z0-9]+\/p[0-9]+/;
+    const slackLinkRegex =
+      /https:\/\/[a-zA-Z0-9-]+\.slack\.com\/(archives\/[A-Z0-9]+\/p[0-9]+|files\/[A-Z0-9]+\/[A-Z0-9]+)/;
     if (!slackLinkRegex.test(link)) {
       throw new Error('Invalid Slack message link');
     }

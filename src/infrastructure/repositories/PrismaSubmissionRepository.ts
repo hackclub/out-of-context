@@ -16,6 +16,9 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
       status: submission.status as SubmissionStatus,
       submitterId: submission.submitterId,
       moderatorNotes: submission.moderatorNotes || undefined,
+      originalText: submission.originalText || undefined,
+      originalAuthorId: submission.originalAuthorId || undefined,
+      originalImageUrl: submission.originalImageUrl || undefined,
       createdAt: submission.createdAt,
       updatedAt: submission.updatedAt,
     });
@@ -34,6 +37,9 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
         status: data.status,
         submitterId: data.submitterId,
         moderatorNotes: data.moderatorNotes,
+        originalText: data.originalText,
+        originalAuthorId: data.originalAuthorId,
+        originalImageUrl: data.originalImageUrl,
       },
     });
 
@@ -43,6 +49,8 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
       status: saved.status as SubmissionStatus,
       submitterId: saved.submitterId,
       moderatorNotes: saved.moderatorNotes || undefined,
+      originalText: saved.originalText || undefined,
+      originalAuthorId: saved.originalAuthorId || undefined,
       createdAt: saved.createdAt,
       updatedAt: saved.updatedAt,
       deletedAt: saved.deletedAt || undefined,
@@ -63,6 +71,8 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
           status: s.status as SubmissionStatus,
           submitterId: s.submitterId,
           moderatorNotes: s.moderatorNotes || undefined,
+          originalText: s.originalText || undefined,
+          originalAuthorId: s.originalAuthorId || undefined,
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
           deletedAt: s.deletedAt || undefined,
@@ -84,6 +94,8 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
           status: s.status as SubmissionStatus,
           submitterId: s.submitterId,
           moderatorNotes: s.moderatorNotes || undefined,
+          originalText: s.originalText || undefined,
+          originalAuthorId: s.originalAuthorId || undefined,
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
           deletedAt: s.deletedAt || undefined,
@@ -96,5 +108,15 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  async assignNextNumber(id: string): Promise<number> {
+    const result = await db.$queryRaw<[{ submissionNumber: number }]>`
+      UPDATE "Submission"
+      SET "submissionNumber" = (SELECT COALESCE(MAX("submissionNumber"), 0) + 1 FROM "Submission")
+      WHERE id = ${id}
+      RETURNING "submissionNumber"
+    `;
+    return result[0].submissionNumber;
   }
 }

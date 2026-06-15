@@ -16,6 +16,8 @@ export interface Config {
   slack: {
     oocChannelId: string;
     superAdminId: string;
+    helperBotToken?: string;
+    helperBotMessage?: string;
   };
 }
 
@@ -37,5 +39,7 @@ export const config: Config = {
   slack: {
     oocChannelId: process.env.SLACK_OOC_CHANNEL_ID || '',
     superAdminId: process.env.SLACK_SUPER_ADMIN_ID || '',
+    helperBotToken: process.env.SLACK_HELPER_BOT_TOKEN || undefined,
+    helperBotMessage: process.env.SLACK_HELPER_BOT_MESSAGE || undefined,
   },
 };

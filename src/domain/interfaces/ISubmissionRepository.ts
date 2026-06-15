@@ -6,4 +6,5 @@ export interface ISubmissionRepository {
   findBySubmitterId(submitterId: string): Promise<Submission[]>;
   getPendingQueue(): Promise<Submission[]>;
   delete(id: string): Promise<void>;
+  assignNextNumber(id: string): Promise<number>;
 }

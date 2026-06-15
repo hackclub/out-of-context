@@ -1,5 +1,4 @@
 import type { WebClient } from '@slack/web-api';
-import { config } from '../../config/index.js';
 import { Submission, SubmissionStatus } from '../../domain/entities/Submission.js';
 import { User, UserRole } from '../../domain/entities/User.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
@@ -9,6 +8,9 @@ import { postToOocChannel } from '../../shared/utils/ooc-post.js';
 export interface SubmitLinkRequest {
   slackId: string;
   slackLink: string;
+  originalText?: string;
+  originalAuthorId?: string;
+  originalImageUrl?: string;
 }
 
 export interface SubmitLinkResponse {
@@ -55,13 +57,24 @@ export class SubmitLink {
         slackLink: request.slackLink,
         status: status,
         submitterId: user.slackId,
+        originalText: request.originalText,
+        originalAuthorId: request.originalAuthorId,
+        originalImageUrl: request.originalImageUrl,
       });
 
       const savedSubmission = await this.submissionRepository.save(submission);
 
       if (isTrusted) {
         try {
-          await postToOocChannel(this.slackClient, submission.slackLink, user.slackId);
+          const originalContent =
+            request.originalText || request.originalImageUrl
+              ? {
+                  text: request.originalText ?? '',
+                  authorId: request.originalAuthorId ?? user.slackId,
+                  imageUrl: request.originalImageUrl,
+                }
+              : undefined;
+          await postToOocChannel(this.slackClient, submission.slackLink, user.slackId, originalContent, this.submissionRepository, savedSubmission.id);
           await this.userRepository.updateStats(user.slackId, { approved: 1 });
         } catch (error) {
           console.error('Failed to post trusted submission:', error);

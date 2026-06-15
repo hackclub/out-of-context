@@ -40,11 +40,15 @@ model User {
 }
 
 model Submission {
-  id             String           @id @default(uuid())
-  slackLink      String
-  status         SubmissionStatus @default(PENDING)
-  moderatorNotes String?
-  
+  id               String           @id @default(uuid())
+  slackLink        String
+  status           SubmissionStatus @default(PENDING)
+  submissionNumber Int?             @unique
+  moderatorNotes   String?
+  originalText     String?
+  originalAuthorId String?
+  originalImageUrl String?
+
   submitterId    String
   submitter      User             @relation(fields: [submitterId], references: [slackId])
   
