@@ -14,6 +14,14 @@
       "display_name": "OOC Bot",
       "always_online": true
     },
+    "shortcuts": [
+      {
+        "name": "Submit to #out-of-context",
+        "type": "message",
+        "callback_id": "submit_to_ooc",
+        "description": "Submit this message for review to appear in #out-of-context"
+      }
+    ],
     "slash_commands": [
       {
         "command": "/b-status",
@@ -35,30 +43,33 @@
         "command": "/b-grant-trust",
         "description": "Grant a user Trusted status (bypass queue).",
         "usage_hint": "@user",
-        "should_escape": false
+        "should_escape": true
       },
       {
         "command": "/b-revoke-trust",
         "description": "Revoke a user's Trusted status.",
         "usage_hint": "@user",
-        "should_escape": false
+        "should_escape": true
       },
       {
         "command": "/b-grant-admin",
         "description": "Grant a user Admin privileges.",
         "usage_hint": "@user",
-        "should_escape": false
+        "should_escape": true
       },
       {
         "command": "/b-revoke-admin",
         "description": "Revoke a user's Admin privileges.",
         "usage_hint": "@user",
-        "should_escape": false
+        "should_escape": true
       }
     ]
   },
   "oauth_config": {
     "scopes": {
+      "user": [
+        "chat:write"
+      ],
       "bot": [
         "im:history",
         "chat:write",
@@ -75,7 +86,9 @@
   "settings": {
     "event_subscriptions": {
       "bot_events": [
-        "message.im"
+        "message.im",
+        "message.channels",
+        "message.groups"
       ]
     },
     "interactivity": {

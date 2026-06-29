@@ -1,5 +1,6 @@
 import type { WebClient } from '@slack/web-api';
 import { Submission, SubmissionStatus } from '../../domain/entities/Submission.js';
+import { logger } from '../../shared/utils/logger.js';
 import { User, UserRole } from '../../domain/entities/User.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
@@ -24,7 +25,7 @@ export class SubmitLink {
     private userRepository: IUserRepository,
     private submissionRepository: ISubmissionRepository,
     private slackClient: WebClient,
-  ) {}
+  ) { }
 
   async execute(request: SubmitLinkRequest): Promise<SubmitLinkResponse> {
     try {
@@ -69,12 +70,12 @@ export class SubmitLink {
           const originalContent =
             request.originalText || request.originalImageUrl
               ? {
-                  text: request.originalText ?? '',
-                  authorId: request.originalAuthorId ?? user.slackId,
-                  imageUrl: request.originalImageUrl,
-                }
+                text: request.originalText ?? '',
+                authorId: request.originalAuthorId ?? user.slackId,
+                imageUrl: request.originalImageUrl,
+              }
               : undefined;
-          await postToOocChannel(
+          postToOocChannel(
             this.slackClient,
             submission.slackLink,
             user.slackId,
@@ -84,7 +85,7 @@ export class SubmitLink {
           );
           await this.userRepository.updateStats(user.slackId, { approved: 1 });
         } catch (error) {
-          console.error('Failed to post trusted submission:', error);
+          logger.error('Failed to post trusted submission:', error);
         }
 
         return {
@@ -97,12 +98,15 @@ export class SubmitLink {
       return {
         submissionId: savedSubmission.id,
         status: 'pending',
-        message: "Your submission has been received and is waiting for moderator review. dw won't take long",
+        message: "Your submission has been received and is waiting for moderator review. won't take long!",
       };
     } catch (error) {
+      logger.error('[SubmitLink] error:', error);
       return {
         status: 'error',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred.',
+        message: error instanceof Error && error.message === 'Invalid Slack message link'
+          ? 'That doesn\'t look like a valid Slack message link.'
+          : 'Something went wrong, please try again.',
       };
     }
   }

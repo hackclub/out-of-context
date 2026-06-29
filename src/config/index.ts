@@ -16,8 +16,7 @@ export interface Config {
   slack: {
     oocChannelId: string;
     superAdminId: string;
-    helperBotToken?: string;
-    helperBotMessage?: string;
+    userToken?: string;
   };
 }
 
@@ -34,12 +33,11 @@ export const config: Config = {
       windowMinutes: Number(process.env.COOLDOWN_WINDOW_MINUTES) || 60,
     },
     cooldownDurationMinutes: Number(process.env.COOLDOWN_DURATION_MINUTES) || 30,
-    trustedReviewEnabled: process.env.TRUSTED_REVIEW_ENABLED === 'true' || true,
+    trustedReviewEnabled: process.env.TRUSTED_REVIEW_ENABLED !== 'false',
   },
   slack: {
     oocChannelId: process.env.SLACK_OOC_CHANNEL_ID || '',
     superAdminId: process.env.SLACK_SUPER_ADMIN_ID || '',
-    helperBotToken: process.env.SLACK_HELPER_BOT_TOKEN || undefined,
-    helperBotMessage: process.env.SLACK_HELPER_BOT_MESSAGE || undefined,
+    userToken: process.env.SLACK_USER_TOKEN || undefined,
   },
 };

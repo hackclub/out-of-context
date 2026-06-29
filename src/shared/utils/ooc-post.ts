@@ -3,14 +3,7 @@ import { config } from '../../config/index.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
 import { fetchOriginalMessage } from './slack-message-fetcher.js';
 import { fetchUserProfile, type SlackUserProfile } from './slack-user-profile.js';
-
-let _helperClient: WebClient | undefined;
-
-function getHelperClient(): WebClient | undefined {
-  if (!config.slack.helperBotToken) return undefined;
-  if (!_helperClient) _helperClient = new WebClient(config.slack.helperBotToken);
-  return _helperClient;
-}
+import { logger } from './logger.js';
 
 interface OriginalContent {
   text: string;
@@ -53,7 +46,7 @@ async function drainQueue(): Promise<void> {
     try {
       await runPost(task);
     } catch (err) {
-      console.error('[ooc-post] post failed:', err);
+      logger.error('[ooc-post] post failed:', err);
     }
     if (taskQueue.length > 0) {
       await sleep(5000);
@@ -99,23 +92,26 @@ async function postWithContent(
 
   const { msgTs, footerText } = parseSlackLink(slackLink);
 
-  await postHelperMessage(submissionNumber);
+  let postedTs: string | undefined;
 
   if (content.imageUrl) {
     const fileId = await reuploadSlackImage(client, content.imageUrl);
     if (fileId) {
-      await sendOocMessage(client, submitter, {
+      postedTs = await sendOocMessage(client, submitter, {
+        text: content.text || slackLink,
         blocks: buildImageBlocks(author, slackLink, content.text, fileId),
-        attachments: [{ color: '#DDDDDD', footer: footerText, ts: msgTs }],
+        attachments: [{ color: '#DDDDDD', fallback: content.text || slackLink, footer: footerText, ts: msgTs }],
       });
+      await postSubmissionNumber(client, postedTs, submissionNumber);
       return;
     }
   }
 
-  await sendOocMessage(client, submitter, {
+  postedTs = await sendOocMessage(client, submitter, {
     attachments: [
       {
         color: '#DDDDDD',
+        fallback: content.text || slackLink,
         author_name: author.displayName,
         author_icon: author.iconUrl,
         author_link: slackLink,
@@ -127,6 +123,7 @@ async function postWithContent(
       },
     ],
   });
+  await postSubmissionNumber(client, postedTs, submissionNumber);
 }
 
 async function postFallback(
@@ -135,9 +132,9 @@ async function postFallback(
   submitterId: string,
   submissionNumber?: number,
 ): Promise<void> {
-  await postHelperMessage(submissionNumber);
   const submitter = await fetchUserProfile(client, submitterId);
-  await sendOocMessage(client, submitter, { text: slackLink, unfurl_links: true });
+  const postedTs = await sendOocMessage(client, submitter, { text: slackLink, unfurl_links: true });
+  await postSubmissionNumber(client, postedTs, submissionNumber);
 }
 
 function parseSlackLink(link: string): { msgTs?: number; footerText: string } {
@@ -172,33 +169,31 @@ async function sendOocMessage(
   client: WebClient,
   submitter: SlackUserProfile,
   payload: { blocks?: any[]; attachments?: any[]; text?: string; unfurl_links?: boolean },
-): Promise<void> {
-  await (client.chat.postMessage as any)({
+): Promise<string | undefined> {
+  const result = await (client.chat.postMessage as any)({
     channel: config.slack.oocChannelId,
     username: submitter.displayName,
-    icon_url: `${submitter.iconUrl}?_=${Date.now()}`,
+    icon_url: submitter.iconUrl,
     unfurl_links: false,
     ...payload,
   });
+  return result?.ts as string | undefined;
 }
 
-async function postHelperMessage(submissionNumber?: number): Promise<void> {
-  const helperClient = getHelperClient();
-  if (!helperClient) {
-    console.warn('[helper-bot] SLACK_HELPER_BOT_TOKEN not set — skipping');
-    return;
-  }
-  if (!config.slack.helperBotMessage) {
-    console.warn('[helper-bot] SLACK_HELPER_BOT_MESSAGE not set — skipping');
-    return;
-  }
-  const text = submissionNumber
-    ? `*Submission #${submissionNumber}* - ${config.slack.helperBotMessage}`
-    : config.slack.helperBotMessage;
+async function postSubmissionNumber(
+  client: WebClient,
+  threadTs: string | undefined,
+  submissionNumber?: number,
+): Promise<void> {
+  if (!submissionNumber || !threadTs) return;
   try {
-    await helperClient.chat.postMessage({ channel: config.slack.oocChannelId, text });
+    await client.chat.postMessage({
+      channel: config.slack.oocChannelId,
+      thread_ts: threadTs,
+      text: `#${submissionNumber}`,
+    });
   } catch (err) {
-    console.error('[helper-bot] post failed:', err);
+    logger.error('[ooc-post] failed to post submission number:', err);
   }
 }
 
@@ -217,7 +212,7 @@ async function reuploadSlackImage(client: WebClient, url: string): Promise<strin
     const result = await client.filesUploadV2({ file: buffer, filename: `image.${ext}` });
     return result.files[0]?.files?.[0]?.id;
   } catch (err) {
-    console.error('Failed to re-upload image:', err);
+    logger.error('Failed to re-upload image:', err);
     return undefined;
   }
 }

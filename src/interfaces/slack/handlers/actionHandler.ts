@@ -6,9 +6,6 @@ const submissionRepository = new PrismaSubmissionRepository();
 const deleteSubmission = new DeleteSubmission(submissionRepository);
 
 export const registerActionHandlers = (app: App) => {
-  /**
-   * Handler for the 'delete_submission' button
-   */
   app.action('delete_submission', async ({ ack, body, action, respond }) => {
     await ack();
 
@@ -17,21 +14,11 @@ export const registerActionHandlers = (app: App) => {
 
     if (!submissionId) return;
 
-    const result = await deleteSubmission.execute({
-      slackId,
-      submissionId,
-    });
+    const result = await deleteSubmission.execute({ slackId, submissionId });
 
-    if (result.success) {
-      await respond({
-        text: `${result.message}`,
-        replace_original: true,
-      });
-    } else {
-      await respond({
-        text: `${result.message}`,
-        replace_original: false,
-      });
-    }
+    await respond({
+      text: result.message,
+      replace_original: result.success,
+    });
   });
 };

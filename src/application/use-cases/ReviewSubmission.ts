@@ -1,5 +1,6 @@
 import type { WebClient } from '@slack/web-api';
 import { config } from '../../config/index.js';
+import { logger } from '../../shared/utils/logger.js';
 import { SubmissionStatus } from '../../domain/entities/Submission.js';
 import { User } from '../../domain/entities/User.js';
 import type { ISubmissionRepository } from '../../domain/interfaces/ISubmissionRepository.js';
@@ -23,7 +24,7 @@ export class ReviewSubmission {
     private userRepository: IUserRepository,
     private submissionRepository: ISubmissionRepository,
     private slackClient: WebClient,
-  ) {}
+  ) { }
 
   async execute(request: ReviewSubmissionRequest): Promise<ReviewSubmissionResponse> {
     const submission = await this.submissionRepository.findById(request.submissionId);
@@ -51,12 +52,12 @@ export class ReviewSubmission {
         const originalContent =
           submission.originalText || submission.originalImageUrl
             ? {
-                text: submission.originalText ?? '',
-                authorId: submission.originalAuthorId ?? submission.submitterId,
-                imageUrl: submission.originalImageUrl,
-              }
+              text: submission.originalText ?? '',
+              authorId: submission.originalAuthorId ?? submission.submitterId,
+              imageUrl: submission.originalImageUrl,
+            }
             : undefined;
-        await postToOocChannel(
+        postToOocChannel(
           this.slackClient,
           submission.slackLink,
           submitter.slackId,
@@ -65,7 +66,7 @@ export class ReviewSubmission {
           submission.id,
         );
       } catch (error) {
-        console.error('Failed to post to OOC channel:', error);
+        logger.error('Failed to post to OOC channel:', error);
       }
 
       try {
@@ -74,7 +75,7 @@ export class ReviewSubmission {
           text: `Your submission was approved and posted to <#${config.slack.oocChannelId}>!`,
         });
       } catch (error) {
-        console.error('Failed to notify submitter:', error);
+        logger.error('Failed to notify submitter:', error);
       }
 
       await this.maybePromoteToTrusted(submitter.slackId);
@@ -98,11 +99,12 @@ export class ReviewSubmission {
           text: `Your submission was rejected.\n*Reason:* ${rejectionReason}${request.notes ? `\n*Moderator Note:* ${request.notes}` : ''}`,
         });
       } catch (error) {
-        console.error('Failed to notify submitter of rejection:', error);
+        logger.error('Failed to notify submitter of rejection:', error);
       }
     }
 
-    return { success: true, message: `Submission ${request.action.toLowerCase()}d successfully.` };
+    const actionLabel = request.action === 'APPROVE' ? 'approved' : 'rejected';
+    return { success: true, message: `Submission ${actionLabel} successfully.` };
   }
 
   private async maybePromoteToTrusted(slackId: string): Promise<void> {
@@ -118,7 +120,7 @@ export class ReviewSubmission {
         text: `Congratulations! You've been automatically promoted to *Trusted Contributor* status.\n\nYour future submissions will be posted directly to <#${config.slack.oocChannelId}> without waiting for moderator review.`,
       });
     } catch (error) {
-      console.error('Failed to notify user of trust promotion:', error);
+      logger.error('Failed to notify user of trust promotion:', error);
     }
   }
 }

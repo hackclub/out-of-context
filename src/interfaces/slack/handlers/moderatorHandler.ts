@@ -1,5 +1,4 @@
 import type { App } from '@slack/bolt';
-import type { WebClient } from '@slack/web-api';
 import { ReviewSubmission } from '../../../application/use-cases/ReviewSubmission.js';
 import { UpdateUserRole } from '../../../application/use-cases/UpdateUserRole.js';
 import { UpdateUserTrust } from '../../../application/use-cases/UpdateUserTrust.js';
@@ -10,8 +9,9 @@ import { PrismaUserRepository } from '../../../infrastructure/repositories/Prism
 const userRepository = new PrismaUserRepository();
 const submissionRepository = new PrismaSubmissionRepository();
 
-// handles: <@U123456>, <@U123456|name>, bare user ID, or @displayname fallback.
-async function resolveUserId(text: string, client: WebClient): Promise<string | undefined> {
+// handles: <@U123456>, <@U123456|name>, or bare user ID (U123...).
+// Typed @mentions are auto-converted by Slack to <@U...> before the handler sees them.
+function resolveUserId(text: string): string | undefined {
   const trimmed = text.trim();
   if (!trimmed) return undefined;
 
@@ -20,16 +20,7 @@ async function resolveUserId(text: string, client: WebClient): Promise<string | 
 
   if (/^[A-Z0-9]{8,12}$/.test(trimmed)) return trimmed;
 
-  const name = trimmed.replace(/^@/, '').toLowerCase();
-  try {
-    const result = await client.users.list({});
-    const match = result.members?.find(
-      (m) => m.name?.toLowerCase() === name || m.profile?.display_name?.toLowerCase() === name,
-    );
-    return match?.id;
-  } catch {
-    return undefined;
-  }
+  return undefined;
 }
 
 export const registerModeratorHandlers = (app: App) => {
@@ -139,7 +130,7 @@ export const registerModeratorHandlers = (app: App) => {
       return;
     }
 
-    const targetUserId = await resolveUserId(body.text, client);
+    const targetUserId = resolveUserId(body.text);
     if (targetUserId) {
       const result = await new UpdateUserTrust(userRepository, client).execute({
         slackId: targetUserId,
@@ -207,7 +198,7 @@ export const registerModeratorHandlers = (app: App) => {
       return;
     }
 
-    const targetUserId = await resolveUserId(body.text, client);
+    const targetUserId = resolveUserId(body.text);
     if (targetUserId) {
       const result = await new UpdateUserTrust(userRepository, client).execute({
         slackId: targetUserId,
@@ -275,7 +266,7 @@ export const registerModeratorHandlers = (app: App) => {
       return;
     }
 
-    const targetUserId = await resolveUserId(body.text, client);
+    const targetUserId = resolveUserId(body.text);
     if (targetUserId) {
       const result = await updateUserRole.execute({
         targetSlackId: targetUserId,
@@ -338,7 +329,7 @@ export const registerModeratorHandlers = (app: App) => {
       return;
     }
 
-    const targetUserId = await resolveUserId(body.text, client);
+    const targetUserId = resolveUserId(body.text);
     if (targetUserId) {
       const result = await updateUserRole.execute({
         targetSlackId: targetUserId,
@@ -399,6 +390,13 @@ export const registerModeratorHandlers = (app: App) => {
     const metadata = JSON.parse(view.private_metadata);
     const action = metadata.action; // 'GRANT' or 'REVOKE'
     const superAdminId = body.user.id;
+
+    if (!(await isSuperAdmin(superAdminId))) {
+      await client.chat
+        .postMessage({ channel: superAdminId, text: 'You do not have permission to manage admin roles.' })
+        .catch((e) => logger.error('[admin_role_modal] Failed to notify unauthorized user', e));
+      return;
+    }
 
     const values = view.state.values;
     const targetUserId = values.user_select_block.selected_user.selected_user;

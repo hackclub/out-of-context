@@ -1,6 +1,7 @@
 import type { WebClient } from '@slack/web-api';
 import { UserRole } from '../../domain/entities/User.js';
 import type { IUserRepository } from '../../domain/interfaces/IUserRepository.js';
+import { logger } from '../../shared/utils/logger.js';
 
 export interface UpdateUserRoleRequest {
   targetSlackId: string;
@@ -50,7 +51,7 @@ export class UpdateUserRole {
         text: `Your role has been updated to: *${request.newRole}*`,
       });
     } catch (error) {
-      console.error('Failed to notify user of role update:', error);
+      logger.error('Failed to notify user of role update:', error);
     }
 
     return {

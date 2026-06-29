@@ -11,11 +11,9 @@ export class PrismaUserRepository implements IUserRepository {
 
     if (!user) return null;
 
-    // Bootstrap Super Admin if configured
     let role = user.role as UserRole;
     if (slackId === config.slack.superAdminId && role !== UserRole.SUPER_ADMIN) {
       role = UserRole.SUPER_ADMIN;
-      // Optionally save it back to DB, but for now we just return the object with the correct role
     }
 
     return new User({

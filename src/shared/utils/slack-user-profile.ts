@@ -1,4 +1,5 @@
 import type { WebClient } from '@slack/web-api';
+import { logger } from './logger.js';
 
 export interface SlackUserProfile {
   displayName: string;
@@ -14,7 +15,7 @@ export async function fetchUserProfile(client: WebClient, slackId: string): Prom
       iconUrl: profile?.image_192 || profile?.image_72 || undefined,
     };
   } catch (error) {
-    console.error('Failed to fetch Slack user profile:', error);
+    logger.error('Failed to fetch Slack user profile:', error);
     return { displayName: 'Unknown' };
   }
 }
