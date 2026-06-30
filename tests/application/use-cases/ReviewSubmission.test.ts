@@ -20,6 +20,7 @@ describe('ReviewSubmission Use Case', () => {
     role: UserRole.USER,
     isTrusted: false,
     isBanned: false,
+    optedOut: false,
     approvedCount: 0,
     rejectedCount: 0,
     explicitRejectionCount: 0,

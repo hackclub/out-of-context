@@ -62,6 +62,11 @@
         "description": "Revoke a user's Admin privileges.",
         "usage_hint": "@user",
         "should_escape": true
+      },
+      {
+        "command": "/b-opt-out",
+        "description": "Toggle your opt-out status for #out-of-context submissions.",
+        "should_escape": false
       }
     ]
   },

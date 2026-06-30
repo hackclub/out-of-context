@@ -35,6 +35,7 @@ export class UpdateUserTrust {
         slackId: request.slackId,
         isTrusted: request.isTrusted,
         isBanned: false,
+        optedOut: false,
         approvedCount: 0,
         rejectedCount: 0,
         role: UserRole.USER,

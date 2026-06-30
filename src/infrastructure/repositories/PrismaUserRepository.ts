@@ -21,6 +21,7 @@ export class PrismaUserRepository implements IUserRepository {
       role: role,
       isTrusted: user.isTrusted,
       isBanned: user.isBanned,
+      optedOut: user.optedOut,
       approvedCount: user.approvedCount,
       rejectedCount: user.rejectedCount,
       explicitRejectionCount: user.explicitRejectionCount,
@@ -37,6 +38,7 @@ export class PrismaUserRepository implements IUserRepository {
         role: data.role,
         isTrusted: data.isTrusted,
         isBanned: data.isBanned,
+        optedOut: data.optedOut,
         approvedCount: data.approvedCount,
         rejectedCount: data.rejectedCount,
         explicitRejectionCount: data.explicitRejectionCount,
@@ -46,6 +48,7 @@ export class PrismaUserRepository implements IUserRepository {
         role: data.role,
         isTrusted: data.isTrusted,
         isBanned: data.isBanned,
+        optedOut: data.optedOut,
         approvedCount: data.approvedCount,
         rejectedCount: data.rejectedCount,
         explicitRejectionCount: data.explicitRejectionCount,
@@ -53,8 +56,16 @@ export class PrismaUserRepository implements IUserRepository {
     });
 
     return new User({
-      ...saved,
+      slackId: saved.slackId,
       role: saved.role as UserRole,
+      isTrusted: saved.isTrusted,
+      isBanned: saved.isBanned,
+      optedOut: saved.optedOut,
+      approvedCount: saved.approvedCount,
+      rejectedCount: saved.rejectedCount,
+      explicitRejectionCount: saved.explicitRejectionCount,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
     });
   }
 

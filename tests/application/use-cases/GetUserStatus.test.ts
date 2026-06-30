@@ -27,6 +27,7 @@ describe('GetUserStatus Use Case', () => {
       role: UserRole.USER,
       isTrusted: true,
       isBanned: false,
+      optedOut: false,
       approvedCount: 5,
       rejectedCount: 1,
       explicitRejectionCount: 0,

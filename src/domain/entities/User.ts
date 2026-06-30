@@ -11,6 +11,7 @@ export interface UserProps {
   role: UserRole;
   isTrusted: boolean;
   isBanned: boolean;
+  optedOut: boolean;
   approvedCount: number;
   rejectedCount: number;
   explicitRejectionCount: number;
@@ -36,6 +37,9 @@ export class User {
   }
   get isBanned(): boolean {
     return this.props.isBanned;
+  }
+  get optedOut(): boolean {
+    return this.props.optedOut;
   }
   get approvedCount(): number {
     return this.props.approvedCount;

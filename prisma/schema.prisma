@@ -27,6 +27,7 @@ model User {
   role                  UserRole @default(USER)
   isTrusted             Boolean  @default(false)
   isBanned              Boolean  @default(false)
+  optedOut              Boolean  @default(false)
   approvedCount         Int      @default(0)
   rejectedCount         Int      @default(0)
   explicitRejectionCount Int      @default(0)

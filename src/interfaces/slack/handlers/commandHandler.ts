@@ -2,6 +2,7 @@ import type { App } from '@slack/bolt';
 import type { KnownBlock } from '@slack/types';
 import { DeleteSubmission } from '../../../application/use-cases/DeleteSubmission.js';
 import { GetUserStatus } from '../../../application/use-cases/GetUserStatus.js';
+import { ToggleOptOut } from '../../../application/use-cases/ToggleOptOut.js';
 import { PrismaSubmissionRepository } from '../../../infrastructure/repositories/PrismaSubmissionRepository.js';
 import { PrismaUserRepository } from '../../../infrastructure/repositories/PrismaUserRepository.js';
 
@@ -9,6 +10,7 @@ const userRepository = new PrismaUserRepository();
 const submissionRepository = new PrismaSubmissionRepository();
 const getUserStatus = new GetUserStatus(userRepository, submissionRepository);
 const deleteSubmission = new DeleteSubmission(submissionRepository);
+const toggleOptOut = new ToggleOptOut(userRepository);
 
 export const registerCommandHandlers = (app: App) => {
   /**
@@ -198,5 +200,11 @@ export const registerCommandHandlers = (app: App) => {
 
       await respond({ blocks });
     }
+  });
+
+  app.command('/b-opt-out', async ({ ack, body, respond }) => {
+    await ack();
+    const result = await toggleOptOut.execute(body.user_id);
+    await respond({ text: result.message, response_type: 'ephemeral' });
   });
 };

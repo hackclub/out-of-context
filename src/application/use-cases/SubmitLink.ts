@@ -16,8 +16,9 @@ export interface SubmitLinkRequest {
 
 export interface SubmitLinkResponse {
   submissionId?: string;
-  status: 'pending' | 'approved' | 'banned' | 'error';
+  status: 'pending' | 'approved' | 'banned' | 'opted_out' | 'error';
   message: string;
+  originalAuthorId?: string;
 }
 
 export class SubmitLink {
@@ -36,6 +37,7 @@ export class SubmitLink {
           slackId: request.slackId,
           isTrusted: false,
           isBanned: false,
+          optedOut: false,
           role: UserRole.USER,
           approvedCount: 0,
           rejectedCount: 0,
@@ -49,6 +51,17 @@ export class SubmitLink {
           status: 'banned',
           message: 'You are currently banned from submitting to Out of Context.',
         };
+      }
+
+      if (request.originalAuthorId && request.originalAuthorId !== request.slackId) {
+        const author = await this.userRepository.findBySlackId(request.originalAuthorId);
+        if (author?.optedOut) {
+          return {
+            status: 'opted_out',
+            message: 'This user has opted out of Out of Context submissions.',
+            originalAuthorId: request.originalAuthorId,
+          };
+        }
       }
 
       const isTrusted = user.isTrusted;
