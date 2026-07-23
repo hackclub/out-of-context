@@ -26,7 +26,7 @@ export class SubmitLink {
     private userRepository: IUserRepository,
     private submissionRepository: ISubmissionRepository,
     private slackClient: WebClient,
-  ) {}
+  ) { }
 
   async execute(request: SubmitLinkRequest): Promise<SubmitLinkResponse> {
     try {
@@ -83,10 +83,10 @@ export class SubmitLink {
           const originalContent =
             request.originalText || request.originalImageUrl
               ? {
-                  text: request.originalText ?? '',
-                  authorId: request.originalAuthorId ?? user.slackId,
-                  imageUrl: request.originalImageUrl,
-                }
+                text: request.originalText ?? '',
+                authorId: request.originalAuthorId ?? user.slackId,
+                imageUrl: request.originalImageUrl,
+              }
               : undefined;
           postToOocChannel(
             this.slackClient,
@@ -104,7 +104,7 @@ export class SubmitLink {
         return {
           submissionId: savedSubmission.id,
           status: 'approved',
-          message: 'Your submission has been automatically approved and posted! (Trusted User). stay a goodboy',
+          message: 'Your submission has been automatically approved and posted! (Trusted User).',
         };
       }
 
