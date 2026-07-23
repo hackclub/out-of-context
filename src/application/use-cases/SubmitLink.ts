@@ -26,7 +26,7 @@ export class SubmitLink {
     private userRepository: IUserRepository,
     private submissionRepository: ISubmissionRepository,
     private slackClient: WebClient,
-  ) { }
+  ) {}
 
   async execute(request: SubmitLinkRequest): Promise<SubmitLinkResponse> {
     try {
@@ -83,10 +83,10 @@ export class SubmitLink {
           const originalContent =
             request.originalText || request.originalImageUrl
               ? {
-                text: request.originalText ?? '',
-                authorId: request.originalAuthorId ?? user.slackId,
-                imageUrl: request.originalImageUrl,
-              }
+                  text: request.originalText ?? '',
+                  authorId: request.originalAuthorId ?? user.slackId,
+                  imageUrl: request.originalImageUrl,
+                }
               : undefined;
           postToOocChannel(
             this.slackClient,
