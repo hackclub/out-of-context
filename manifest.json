@@ -1,0 +1,24 @@
+{
+	"display_information": {
+		"name": "Out of Context"
+	},
+	"features": {
+		"bot_user": {
+			"display_name": "Out of Context",
+			"always_online": false
+		}
+	},
+	"oauth_config": {
+		"scopes": {
+			"user": ["chat:write", "im:read"],
+			"bot": ["chat:write", "chat:write.customize"]
+		},
+		"pkce_enabled": false
+	},
+	"settings": {
+		"org_deploy_enabled": false,
+		"socket_mode_enabled": false,
+		"token_rotation_enabled": false,
+		"is_mcp_enabled": false
+	}
+}
