@@ -1,9 +1,12 @@
 import { config } from './src/config'
-import { app } from './src/slack'
+import { app, userApp } from './src/slack'
+import { attachListeners } from './src/slack/listeners'
+
+attachListeners(app, userApp)
 
 Bun.serve({
 	routes: {
-		'/slack/events': (req) => app.receiver.fetch(req),
+		'/slack/events': (req) => userApp.receiver.fetch(req),
 	},
 	port: config.port,
 })

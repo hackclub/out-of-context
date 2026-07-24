@@ -1,0 +1,68 @@
+diff --git a/node_modules/slack.ts/.bun-tag-3bf0edc620782410 b/.bun-tag-3bf0edc620782410
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/slack.ts/.bun-tag-54e17ae2272db8a9 b/.bun-tag-54e17ae2272db8a9
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/slack.ts/.bun-tag-f81a65366fb89efe b/.bun-tag-f81a65366fb89efe
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/package.json b/package.json
+index bd0c6d2f59e7802afdad16b19c662a256aee46be..978b90adf486bbdb7905c03c20dbd14df428a28a 100644
+--- a/package.json
++++ b/package.json
+@@ -15,16 +15,16 @@
+ 	],
+ 	"type": "module",
+ 	"module": "./dist/index.js",
+-	"types": "./dist/index.d.ts",
++	"types": "./src/index.ts",
+ 	"exports": {
+ 		".": {
+ 			"bun": "./src/index.ts",
+-			"types": "./dist/index.d.ts",
++			"types": "./src/index.ts",
+ 			"import": "./dist/index.js"
+ 		},
+ 		"./rich": {
+ 			"bun": "./src/exports/rich.ts",
+-			"types": "./dist/exports/rich.d.ts",
++			"types": "./src/exports/rich.ts",
+ 			"import": "./dist/exports/rich.js"
+ 		}
+ 	},
+diff --git a/src/api/events/index.ts b/src/api/events/index.ts
+index 751e15fbe34e12d4e63133db94ed073621dbc0cb..98760476e7abfb005802a4de4bef04eac891395a 100644
+--- a/src/api/events/index.ts
++++ b/src/api/events/index.ts
+@@ -17,7 +17,13 @@ export interface EventWrapper<T extends AllEvents = AllEvents> {
+ 	event_context: string
+ 	event_id: string
+ 	event_time: number
+-	authorizations: unknown[]
++	authorizations: {
++		enterprise_id?: string
++		team_id?: string
++		user_id?: string
++		is_bot?: boolean
++		is_enterprise_install?: boolean
++	}[]
+ 	is_ext_shared_channel: boolean
+ 	context_team_id: string
+ 	context_enterprise_id: string | null
+diff --git a/src/api/types/message.ts b/src/api/types/message.ts
+index 706087aaf9be269eec76bb8bdbbe52bb0adfd773..15ac3c3d2da1c601d1d2d0081f91f2f128c8a9c8 100644
+--- a/src/api/types/message.ts
++++ b/src/api/types/message.ts
+@@ -26,6 +26,11 @@ export type Attachment = {
+ 	title?: string
+ 	title_link?: string
+ 	ts?: string
++	is_msg_unfurl?: boolean
++	from_url?: string
++	channel_id?: string
++	channel_team?: string
++	author_id?: string
+ } & ({ blocks: AnyBlock[] } | { fallback: string } | { text: string })
+ 
+ export interface AttachmentField {

@@ -8,6 +8,7 @@ import {
 	snakeCase,
 	index,
 	uniqueIndex,
+	integer,
 } from 'drizzle-orm/pg-core'
 
 const pgTable = snakeCase.table
@@ -36,11 +37,11 @@ export const users = pgTable('user', {
 export const submissions = pgTable(
 	'submission',
 	{
-		id: uuid().primaryKey().defaultRandom(),
+		id: integer().primaryKey().generatedByDefaultAsIdentity(),
 		status: submissionStatusEnum().notNull().default('PENDING'),
+		originalMessageUser: text().notNull(),
 		forwardedChannelId: text().notNull(),
 		forwardedMessageTs: text().notNull(),
-		forwardedMessageUser: text().notNull(),
 		postedChannelId: text(),
 		postedMessageTs: text(),
 		submitterId: text()

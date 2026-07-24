@@ -3,6 +3,11 @@
 		"name": "Out of Context"
 	},
 	"features": {
+		"app_home": {
+			"home_tab_enabled": false,
+			"messages_tab_enabled": true,
+			"messages_tab_read_only_enabled": false
+		},
 		"bot_user": {
 			"display_name": "Out of Context",
 			"always_online": false
@@ -10,12 +15,21 @@
 	},
 	"oauth_config": {
 		"scopes": {
-			"user": ["chat:write", "im:read"],
-			"bot": ["chat:write", "chat:write.customize"]
+			"user": ["channels:read", "chat:write", "groups:read", "im:history", "im:read", "mpim:read"],
+			"bot": ["im:write", "chat:write", "chat:write.customize"]
 		},
 		"pkce_enabled": false
 	},
 	"settings": {
+		"event_subscriptions": {
+			"request_url": "https://ooc-dev.jollyy.dev/slack/events",
+			"user_events": ["message.im"],
+			"bot_events": ["app_home_opened"]
+		},
+		"interactivity": {
+			"is_enabled": true,
+			"request_url": "https://ooc-dev.jollyy.dev/slack/events"
+		},
 		"org_deploy_enabled": false,
 		"socket_mode_enabled": false,
 		"token_rotation_enabled": false,

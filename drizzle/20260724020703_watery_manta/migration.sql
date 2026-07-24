@@ -1,0 +1,1 @@
+ALTER TABLE "submission" RENAME COLUMN "forwarded_message_user" TO "original_message_user";
