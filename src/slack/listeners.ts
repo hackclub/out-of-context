@@ -10,9 +10,16 @@ import {
 } from 'slack.ts'
 import { config } from '../config'
 import { createUser } from '../queries/users'
-import { createSubmission, deleteSubmission, type Submission } from '../queries/submissions'
-import { forwardMessageFromUser } from './operations'
+import {
+	createSubmission,
+	deleteSubmission,
+	getSubmission,
+	updateSubmissionStatus,
+	type Submission,
+} from '../queries/submissions'
+import { forwardMessageFromUser, getUserBotDM } from './operations'
 import { logAudit } from '../queries/audit'
+import { userClient } from '.'
 
 export function attachListeners(app: App, userApp: App) {
 	// someone sent a message
@@ -103,6 +110,69 @@ export function attachListeners(app: App, userApp: App) {
 			return event.reply(
 				`Your message has been staged as OOC #${submission.id}. It will be reviewed soon!`,
 			)
+		}
+	})
+
+	userApp.on('action:button.approve', async (event) => {
+		if (event.event.container.type !== 'message') return
+		const userId = event.event.user.id
+		const { id } = JSON.parse(event.value!) as { id: number }
+
+		const submission = await updateSubmissionStatus(id, 'APPROVED')
+		if (!submission) {
+			return event.respond
+				.message({ ephemeral: true, text: 'Cannot find submission.' })
+				.catch((e) => console.error('Failed to respond to failed approval:', e))
+		}
+
+		logAudit({
+			action: 'submission.approve',
+			actorId: userId,
+			resourceType: 'submission',
+			resourceId: id,
+		})
+
+		try {
+			await app
+				.channel(event.event.container.channel_id)
+				.message(event.event.container.message_ts)
+				.edit({
+					blocks: blocks(
+						section(
+							`OOC submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${userId}>`,
+						),
+					),
+				})
+			// const { channel, ts } = await userClient.request('chat.shareMessage', {
+			// 	channel: submission.forwardedChannelId,
+			// 	timestamp: submission.forwardedMessageTs,
+			// 	share_channel: await getUserBotDM(),
+			// })
+			// const { permalink } = (await app.request('chat.getPermalink', {
+			// 	channel,
+			// 	message_ts: ts,
+			// })) as { ok: true; permalink: string }
+			// await app.channel(config.slack.channelId).send({ text: `${permalink}`, unfurl_links: true })
+
+			const { channel, ts } = await forwardMessageFromUser(
+				submission.forwardedChannelId,
+				submission.forwardedMessageTs,
+				config.slack.channelId,
+				{ text: `<@${submission.submitterId}>` },
+			)
+			await app
+				.channel(channel)
+				.message(ts)
+				.edit({
+					blocks: blocks(
+						context(
+							image('user pfp').url(`https://cachet.dunkirk.sh/users/${submission.submitterId}/r`),
+							`<@${submission.submitterId}>`,
+						),
+					),
+				})
+		} catch (e) {
+			console.error('Failed to approve OOC:', e)
 		}
 	})
 }
