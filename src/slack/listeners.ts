@@ -4,22 +4,18 @@ import {
 	button,
 	context,
 	image,
+	mrkdwn,
+	R,
+	richText,
 	section,
 	SlackWebAPIPlatformError,
 	type App,
 } from 'slack.ts'
 import { config } from '../config'
-import { createUser } from '../queries/users'
-import {
-	createSubmission,
-	deleteSubmission,
-	getSubmission,
-	updateSubmissionStatus,
-	type Submission,
-} from '../queries/submissions'
-import { forwardMessageFromUser, getUserBotDM } from './operations'
 import { logAudit } from '../queries/audit'
-import { userClient } from '.'
+import { createSubmission, deleteSubmission, updateSubmissionStatus } from '../queries/submissions'
+import { createUser } from '../queries/users'
+import { forwardMessageFromUser } from './operations'
 
 export function attachListeners(app: App, userApp: App) {
 	// someone sent a message
@@ -71,14 +67,18 @@ export function attachListeners(app: App, userApp: App) {
 					event.channel.id,
 					event.ts,
 					config.slack.reviewChannelId,
-					{ text: `OOC submitted by <@${event.user}>` },
+					{
+						blocks: blocks(
+							richText(R.section(`OOC #${submission.id} submitted by `, R.user(event.user))),
+						),
+					},
 				)
 				await app
 					.channel(forwarded.channel)
 					.message(forwarded.ts)
 					.edit({
 						blocks: blocks(
-							section(`OOC submitted by <@${event.user}>`),
+							section(mrkdwn(`OOC #${submission.id} submitted by <@${event.user}>`).verbatim()),
 							actions(
 								button('Approve').id('approve').value(buttonValue).style('primary'),
 								button('Reject (not OOC)').id('reject_ooc').value(buttonValue),
@@ -139,20 +139,12 @@ export function attachListeners(app: App, userApp: App) {
 				.edit({
 					blocks: blocks(
 						section(
-							`OOC submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${userId}>`,
+							mrkdwn(
+								`OOC #${submission.id} submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${userId}>`,
+							).verbatim(),
 						),
 					),
 				})
-			// const { channel, ts } = await userClient.request('chat.shareMessage', {
-			// 	channel: submission.forwardedChannelId,
-			// 	timestamp: submission.forwardedMessageTs,
-			// 	share_channel: await getUserBotDM(),
-			// })
-			// const { permalink } = (await app.request('chat.getPermalink', {
-			// 	channel,
-			// 	message_ts: ts,
-			// })) as { ok: true; permalink: string }
-			// await app.channel(config.slack.channelId).send({ text: `${permalink}`, unfurl_links: true })
 
 			const { channel, ts } = await forwardMessageFromUser(
 				submission.forwardedChannelId,
@@ -170,6 +162,14 @@ export function attachListeners(app: App, userApp: App) {
 							`<@${submission.submitterId}>`,
 						),
 					),
+					metadata: {
+						event_type: 'out_of_context_posted',
+						event_payload: {
+							id: submission.id,
+							submitter: submission.submitterId,
+							submittedAt: submission.createdAt,
+						},
+					},
 				})
 		} catch (e) {
 			console.error('Failed to approve OOC:', e)
