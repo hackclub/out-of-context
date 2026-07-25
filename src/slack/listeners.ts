@@ -20,6 +20,7 @@ import {
 	deleteSubmission,
 	getSubmission,
 	updateSubmissionStatus,
+	type Submission,
 } from '../queries/submissions'
 import {
 	createUser,
@@ -69,7 +70,7 @@ export function attachListeners(app: App, userApp: App) {
 				)
 			}
 
-			let submission
+			let submission, forwarded
 			try {
 				await createUser(event.user)
 				submission = await createSubmission({
@@ -80,7 +81,7 @@ export function attachListeners(app: App, userApp: App) {
 				})
 
 				const buttonValue = JSON.stringify({ id: submission.id })
-				const forwarded = await forwardMessageFromUser(
+				forwarded = await forwardMessageFromUser(
 					event.channel.id,
 					event.ts,
 					config.slack.reviewChannelId,
@@ -127,25 +128,27 @@ export function attachListeners(app: App, userApp: App) {
 				},
 			})
 
-			return event.reply(
+			await event.reply(
 				`Your message has been staged as OOC #${submission.id}. It will be reviewed soon!`,
 			)
+
+			const submitter = (await getUser(event.user))!
+			if (submitter?.isTrusted) {
+				try {
+					await approve(submission, forwarded.channel, forwarded.ts, 'USLACKBOT')
+				} catch (e) {
+					console.log('Failed to auto-approve submission:', e)
+				}
+			}
 		}
 	})
 
-	userApp.on('action:button.approve', async (event) => {
-		if (event.event.container.type !== 'message') return
-		const userId = event.event.user.id
-		if (!(await isAdmin(userId))) return
-		const { id } = JSON.parse(event.value!) as { id: number }
-
-		const submission = await getSubmission(id)
-		if (!submission) {
-			return event.respond
-				.message({ ephemeral: true, text: 'Cannot find submission.' })
-				.catch((e) => console.error('Failed to respond to failed approval:', e))
-		}
-
+	async function approve(
+		submission: Submission,
+		reviewChannelId: string,
+		reviewMessageTs: string,
+		actorId: string,
+	) {
 		let postedChannelId, postedMessageTs
 		try {
 			;({ channel: postedChannelId, ts: postedMessageTs } = await forwardMessageFromUser(
@@ -175,38 +178,69 @@ export function attachListeners(app: App, userApp: App) {
 				})
 
 			await app
-				.channel(event.event.container.channel_id)
-				.message(event.event.container.message_ts)
+				.channel(reviewChannelId)
+				.message(reviewMessageTs)
 				.edit({
 					blocks: blocks(
 						section(
 							mrkdwn(
-								`OOC #${submission.id} submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${userId}>`,
+								`OOC #${submission.id} submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${actorId}>`,
 							).verbatim(),
 						),
 					),
 				})
 
-			await approveSubmission(id, postedChannelId, postedMessageTs)
+			await approveSubmission(submission.id, postedChannelId, postedMessageTs)
 		} catch (e) {
-			console.error('Failed to approve OOC:', e)
 			if (postedChannelId && postedMessageTs) {
 				app
 					.request('chat.delete', { channel: postedChannelId, ts: postedMessageTs })
 					.catch((e) => console.error('Failed to delete failed approved OOC:', e))
 			}
+			throw e
+		}
+
+		userApp
+			.channel(submission.forwardedChannelId)
+			.message(submission.forwardedMessageTs)
+			.reply(`:white_check_mark: Your submission has been approved!`)
+			.catch((e) => console.error('Failed to notify user for approval:', e))
+
+		logAudit({
+			action: 'submission.approve',
+			actorId,
+			resourceType: 'submission',
+			resourceId: submission.id,
+			details: { postedChannelId, postedMessageTs },
+		})
+	}
+
+	userApp.on('action:button.approve', async (event) => {
+		if (event.event.container.type !== 'message') return
+		const userId = event.event.user.id
+		if (!(await isAdmin(userId))) return
+		const { id } = JSON.parse(event.value!) as { id: number }
+
+		const submission = await getSubmission(id)
+		if (!submission) {
+			return event.respond
+				.message({ ephemeral: true, text: 'Cannot find submission.' })
+				.catch((e) => console.error('Failed to respond to failed approval:', e))
+		}
+
+		try {
+			await approve(
+				submission,
+				event.event.container.channel_id,
+				event.event.container.message_ts,
+				userId,
+			)
+		} catch (e) {
+			console.error('Failed to approve OOC:', e)
 			return event.respond
 				.message({ ephemeral: true, text: 'Failed to approve OOC. Please try again later.' })
 				.catch((e) => console.error('Failed to respond to failed approval:', e))
 		}
-
-		logAudit({
-			action: 'submission.approve',
-			actorId: userId,
-			resourceType: 'submission',
-			resourceId: id,
-			details: { postedChannelId, postedMessageTs },
-		})
 	})
 
 	async function reject(
