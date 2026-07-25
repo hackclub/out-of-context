@@ -27,3 +27,16 @@ export async function updateSubmissionStatus(id: number, status: Submission['sta
 		.returning()
 	return submission
 }
+
+export async function approveSubmission(
+	id: number,
+	postedChannelId: string,
+	postedMessageTs: string,
+) {
+	const [submission] = await db
+		.update(submissions)
+		.set({ status: 'APPROVED', postedChannelId, postedMessageTs })
+		.where(eq(submissions.id, id))
+		.returning()
+	return submission
+}

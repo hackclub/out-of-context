@@ -9,11 +9,18 @@ import {
 	richText,
 	section,
 	SlackWebAPIPlatformError,
+	type ActionInstance,
 	type App,
 } from 'slack.ts'
 import { config } from '../config'
 import { logAudit } from '../queries/audit'
-import { createSubmission, deleteSubmission, updateSubmissionStatus } from '../queries/submissions'
+import {
+	approveSubmission,
+	createSubmission,
+	deleteSubmission,
+	getSubmission,
+	updateSubmissionStatus,
+} from '../queries/submissions'
 import { createUser } from '../queries/users'
 import { forwardMessageFromUser } from './operations'
 
@@ -82,7 +89,10 @@ export function attachListeners(app: App, userApp: App) {
 							actions(
 								button('Approve').id('approve').value(buttonValue).style('primary'),
 								button('Reject (not OOC)').id('reject_ooc').value(buttonValue),
-								button('Reject (COC)').id('reject_coc').value(buttonValue).style('danger'),
+								button('Reject (Explicit)')
+									.id('reject_explicit')
+									.value(buttonValue)
+									.style('danger'),
 							),
 						),
 					})
@@ -118,43 +128,24 @@ export function attachListeners(app: App, userApp: App) {
 		const userId = event.event.user.id
 		const { id } = JSON.parse(event.value!) as { id: number }
 
-		const submission = await updateSubmissionStatus(id, 'APPROVED')
+		const submission = await getSubmission(id)
 		if (!submission) {
 			return event.respond
 				.message({ ephemeral: true, text: 'Cannot find submission.' })
 				.catch((e) => console.error('Failed to respond to failed approval:', e))
 		}
 
-		logAudit({
-			action: 'submission.approve',
-			actorId: userId,
-			resourceType: 'submission',
-			resourceId: id,
-		})
-
+		let postedChannelId, postedMessageTs
 		try {
-			await app
-				.channel(event.event.container.channel_id)
-				.message(event.event.container.message_ts)
-				.edit({
-					blocks: blocks(
-						section(
-							mrkdwn(
-								`OOC #${submission.id} submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${userId}>`,
-							).verbatim(),
-						),
-					),
-				})
-
-			const { channel, ts } = await forwardMessageFromUser(
+			;({ channel: postedChannelId, ts: postedMessageTs } = await forwardMessageFromUser(
 				submission.forwardedChannelId,
 				submission.forwardedMessageTs,
 				config.slack.channelId,
 				{ text: `<@${submission.submitterId}>` },
-			)
+			))
 			await app
-				.channel(channel)
-				.message(ts)
+				.channel(postedChannelId)
+				.message(postedMessageTs)
 				.edit({
 					blocks: blocks(
 						context(
@@ -171,8 +162,119 @@ export function attachListeners(app: App, userApp: App) {
 						},
 					},
 				})
+
+			await app
+				.channel(event.event.container.channel_id)
+				.message(event.event.container.message_ts)
+				.edit({
+					blocks: blocks(
+						section(
+							mrkdwn(
+								`OOC #${submission.id} submitted by <@${submission.submitterId}> - :white_check_mark: approved by <@${userId}>`,
+							).verbatim(),
+						),
+					),
+				})
+
+			await approveSubmission(id, postedChannelId, postedMessageTs)
 		} catch (e) {
 			console.error('Failed to approve OOC:', e)
+			if (postedChannelId && postedMessageTs) {
+				app
+					.request('chat.delete', { channel: postedChannelId, ts: postedMessageTs })
+					.catch((e) => console.error('Failed to delete failed approved OOC:', e))
+			}
+			return event.respond
+				.message({ ephemeral: true, text: 'Failed to approve OOC. Please try again later.' })
+				.catch((e) => console.error('Failed to respond to failed approval:', e))
 		}
+
+		logAudit({
+			action: 'submission.approve',
+			actorId: userId,
+			resourceType: 'submission',
+			resourceId: id,
+			details: { postedChannelId, postedMessageTs },
+		})
+	})
+
+	async function reject(
+		event: ActionInstance,
+		id: number,
+		status: 'REJECTED_NOT_OOC' | 'REJECTED_EXPLICIT',
+		message: string,
+	) {
+		if (event.event.container.type !== 'message') return
+
+		const submission = await getSubmission(id)
+		if (!submission) {
+			return event.respond
+				.message({ ephemeral: true, text: 'Cannot find submission.' })
+				.catch((e) => console.error('Failed to respond to failed OOC rejection:', e))
+		}
+
+		try {
+			await userApp
+				.channel(submission.forwardedChannelId)
+				.message(submission.forwardedMessageTs)
+				.reply(message)
+
+			await app
+				.channel(event.event.container.channel_id)
+				.message(event.event.container.message_ts)
+				.edit({
+					blocks: blocks(
+						section(
+							mrkdwn(
+								`OOC #${submission.id} submitted by <@${submission.submitterId}> - :x: rejected (${status.split('_').slice(1).join(' ').toLowerCase()}) by <@${event.event.user.id}>`,
+							).verbatim(),
+						),
+					),
+				})
+
+			await updateSubmissionStatus(id, status)
+		} catch (e) {
+			console.error('Failed to reject OOC:', e)
+		}
+	}
+
+	userApp.on('action:button.reject_ooc', async (event) => {
+		if (event.event.container.type !== 'message') return
+		const userId = event.event.user.id
+		const { id } = JSON.parse(event.value!) as { id: number }
+
+		await reject(
+			event,
+			id,
+			'REJECTED_NOT_OOC',
+			`:x: Your submission has been rejected because it is not suitable for the <#${config.slack.channelId}> channel.`,
+		)
+
+		logAudit({
+			action: 'submission.reject_ooc',
+			actorId: userId,
+			resourceType: 'submission',
+			resourceId: id,
+		})
+	})
+
+	userApp.on('action:button.reject_explicit', async (event) => {
+		if (event.event.container.type !== 'message') return
+		const userId = event.event.user.id
+		const { id } = JSON.parse(event.value!) as { id: number }
+
+		await reject(
+			event,
+			id,
+			'REJECTED_EXPLICIT',
+			`:x: Your submission has been rejected because it doesn't comply with the rules on explicit content.`,
+		)
+
+		logAudit({
+			action: 'submission.reject_explicit',
+			actorId: userId,
+			resourceType: 'submission',
+			resourceId: id,
+		})
 	})
 }
