@@ -21,8 +21,18 @@ import {
 	getSubmission,
 	updateSubmissionStatus,
 } from '../queries/submissions'
-import { createUser } from '../queries/users'
+import {
+	createUser,
+	getUser,
+	isAdmin,
+	isSuperAdmin,
+	setUserOptOut,
+	setUserRole,
+	setUserTrusted,
+	type User,
+} from '../queries/users'
 import { forwardMessageFromUser } from './operations'
+import { generateUserInspectBlocks } from './views/user-inspect'
 
 export function attachListeners(app: App, userApp: App) {
 	// someone sent a message
@@ -126,6 +136,7 @@ export function attachListeners(app: App, userApp: App) {
 	userApp.on('action:button.approve', async (event) => {
 		if (event.event.container.type !== 'message') return
 		const userId = event.event.user.id
+		if (!(await isAdmin(userId))) return
 		const { id } = JSON.parse(event.value!) as { id: number }
 
 		const submission = await getSubmission(id)
@@ -241,6 +252,7 @@ export function attachListeners(app: App, userApp: App) {
 	userApp.on('action:button.reject_ooc', async (event) => {
 		if (event.event.container.type !== 'message') return
 		const userId = event.event.user.id
+		if (!(await isAdmin(userId))) return
 		const { id } = JSON.parse(event.value!) as { id: number }
 
 		await reject(
@@ -261,6 +273,7 @@ export function attachListeners(app: App, userApp: App) {
 	userApp.on('action:button.reject_explicit', async (event) => {
 		if (event.event.container.type !== 'message') return
 		const userId = event.event.user.id
+		if (!(await isAdmin(userId))) return
 		const { id } = JSON.parse(event.value!) as { id: number }
 
 		await reject(
@@ -276,5 +289,129 @@ export function attachListeners(app: App, userApp: App) {
 			resourceType: 'submission',
 			resourceId: id,
 		})
+	})
+
+	// user inspect command
+
+	userApp.on(`/${config.slack.commandPrefix}ooc-user`, async (event) => {
+		if (!(await isAdmin(event.user_id))) {
+			return event.respond
+				.message({ ephemeral: true, text: 'Only admins can use this command.' })
+				.catch(() => {})
+		}
+
+		const userId = event.text.trim().match(/<@([UW][0-9A-Z]+)(?:\|.*)?>/)?.[1]
+		const user = userId ? ((await createUser(userId)) || (await getUser(userId)))! : undefined
+
+		try {
+			await event.respond.message({
+				ephemeral: true,
+				blocks: await generateUserInspectBlocks(user),
+			})
+		} catch (e) {
+			console.error('Failed to respond to /ooc-user command:', e)
+		}
+	})
+
+	userApp.on('action:button.admin_set_trusted', async (event) => {
+		if (!(await isAdmin(event.event.user.id))) return
+
+		const { id, isTrusted } = JSON.parse(event.value!) as { id: string; isTrusted: boolean }
+
+		try {
+			const user = await setUserTrusted(id, isTrusted)
+			if (!user) return
+
+			logAudit({
+				action: 'user.set_trusted',
+				actorId: event.event.user.id,
+				resourceType: 'user',
+				resourceId: id,
+				details: { isTrusted },
+			})
+
+			await event.respond.edit({
+				ephemeral: true,
+				blocks: await generateUserInspectBlocks(user),
+			})
+		} catch (e) {
+			console.error('Failed to respond to set trusted button:', e)
+		}
+	})
+
+	userApp.on('action:button.admin_set_optout', async (event) => {
+		if (!(await isAdmin(event.event.user.id))) return
+
+		const { id, optedOut } = JSON.parse(event.value!) as { id: string; optedOut: boolean }
+
+		try {
+			const user = await setUserOptOut(id, optedOut)
+			if (!user) return
+
+			logAudit({
+				action: 'user.set_opted_out',
+				actorId: event.event.user.id,
+				resourceType: 'user',
+				resourceId: id,
+				details: { optedOut },
+			})
+
+			await event.respond.edit({
+				ephemeral: true,
+				blocks: await generateUserInspectBlocks(user),
+			})
+		} catch (e) {
+			console.error('Failed to respond to set optout button:', e)
+		}
+	})
+
+	userApp.on('action:static_select.admin_set_role', async (event) => {
+		if (!(await isSuperAdmin(event.event.user.id))) {
+			return event.respond.message({
+				ephemeral: true,
+				text: `Only super admins can change roles of other users.`,
+			})
+		}
+
+		const { id, role } = JSON.parse(event.selected_option.value!) as {
+			id: string
+			role: User['role']
+		}
+
+		try {
+			const user = await setUserRole(id, role)
+			if (!user) return
+
+			logAudit({
+				action: 'user.set_role',
+				actorId: event.event.user.id,
+				resourceType: 'user',
+				resourceId: id,
+				details: { role },
+			})
+
+			await event.respond.edit({
+				ephemeral: true,
+				blocks: await generateUserInspectBlocks(user),
+			})
+		} catch (e) {
+			console.error('Failed to respond to set role select menu:', e)
+		}
+	})
+
+	userApp.on('action:users_select.admin_inspect_user', async (event) => {
+		if (!(await isAdmin(event.event.user.id))) return
+
+		const userId = event.selected_user
+		const user = ((await createUser(userId)) || (await getUser(userId)))!
+
+		try {
+			await event.respond.edit({
+				ephemeral: true,
+				blocks: await generateUserInspectBlocks(user),
+			})
+		} catch (e) {
+			console.error('Failed to respond to selecting user to inspect:', e)
+		}
 	})
 }

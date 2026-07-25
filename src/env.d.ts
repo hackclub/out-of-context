@@ -2,9 +2,12 @@ declare module 'bun' {
 	interface Env {
 		DATABASE_URL: string
 
+		SUPERADMIN_USER_ID?: string
+
 		SLACK_USER_ID: string
 		SLACK_OOC_CHANNEL: string
 		SLACK_REVIEW_CHANNEL: string
+		SLACK_COMMAND_PREFIX?: string
 
 		SLACK_BOT_TOKEN: string
 		SLACK_USER_TOKEN: string

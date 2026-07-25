@@ -4,6 +4,12 @@ index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2
 diff --git a/node_modules/slack.ts/.bun-tag-54e17ae2272db8a9 b/.bun-tag-54e17ae2272db8a9
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/slack.ts/.bun-tag-a7f933825085e9d9 b/.bun-tag-a7f933825085e9d9
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/slack.ts/.bun-tag-ee16d810903597d3 b/.bun-tag-ee16d810903597d3
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/node_modules/slack.ts/.bun-tag-f81a65366fb89efe b/.bun-tag-f81a65366fb89efe
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
@@ -50,6 +56,18 @@ index 751e15fbe34e12d4e63133db94ed073621dbc0cb..98760476e7abfb005802a4de4bef04ea
  	is_ext_shared_channel: boolean
  	context_team_id: string
  	context_enterprise_id: string | null
+diff --git a/src/api/interactive/block_actions.ts b/src/api/interactive/block_actions.ts
+index 5af357ae42a0a086c52277d361d7d9a3973904cd..ec709a2f8eb98a14536aefb3e36018e3e45517a0 100644
+--- a/src/api/interactive/block_actions.ts
++++ b/src/api/interactive/block_actions.ts
+@@ -185,6 +185,7 @@ export type BlockAction =
+ 	| PlainTextInputAction
+ 	| RadioAction
+ 	| StaticSelectAction
++	| UsersSelectAction
+ 
+ export type BlockActionTypes = BlockAction['type']
+ 
 diff --git a/src/api/types/message.ts b/src/api/types/message.ts
 index 706087aaf9be269eec76bb8bdbbe52bb0adfd773..15ac3c3d2da1c601d1d2d0081f91f2f128c8a9c8 100644
 --- a/src/api/types/message.ts
@@ -66,3 +84,24 @@ index 706087aaf9be269eec76bb8bdbbe52bb0adfd773..15ac3c3d2da1c601d1d2d0081f91f2f1
  } & ({ blocks: AnyBlock[] } | { fallback: string } | { text: string })
  
  export interface AttachmentField {
+diff --git a/src/api/types/value.ts b/src/api/types/value.ts
+index b80ea0e3ddec70db5179b65d089e64b5c5fac961..b4e7ecc9e44967150e3d13ead08e149ff2a80d77 100644
+--- a/src/api/types/value.ts
++++ b/src/api/types/value.ts
+@@ -56,6 +56,11 @@ export interface StaticSelectValue {
+ 	selected_option: PlainTextOption
+ }
+ 
++export interface UsersSelectValue {
++	type: 'users_select'
++	selected_user: string
++}
++
+ export type StateValue =
+ 	| CheckboxesValue
+ 	| DatePickerValue
+@@ -64,3 +69,4 @@ export type StateValue =
+ 	| FileInputValue
+ 	| PlainTextInputValue
+ 	| StaticSelectValue
++	| UsersSelectValue
