@@ -11,12 +11,21 @@
 		"bot_user": {
 			"display_name": "Out of Context",
 			"always_online": false
-		}
+		},
+		"slash_commands": [
+			{
+				"command": "/ooc-user",
+				"url": "https://ooc-dev.jollyy.dev/slack/events",
+				"description": "[Admin] Inspect a user",
+				"usage_hint": "[@user]",
+				"should_escape": true
+			}
+		]
 	},
 	"oauth_config": {
 		"scopes": {
 			"user": ["channels:read", "chat:write", "groups:read", "im:history", "im:read", "mpim:read"],
-			"bot": ["im:write", "chat:write", "chat:write.customize"]
+			"bot": ["im:write", "users:read", "chat:write", "chat:write.customize", "commands"]
 		},
 		"pkce_enabled": false
 	},
