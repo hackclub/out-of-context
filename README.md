@@ -1,15 +1,3 @@
-# ooc
+# out of context
 
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.12. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+the bot that powers [#out-of-context](https://hackclub.slack.com/archives/C01270P3XFV)!
