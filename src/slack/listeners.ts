@@ -70,6 +70,12 @@ export function attachListeners(app: App, userApp: App) {
 				)
 			}
 
+			if (attachment.author_id === event.user) {
+				return event.reply(
+					'You can\'t OOC your own message!'
+				)
+			}
+
 			let submission, forwarded
 			try {
 				await createUser(event.user)
