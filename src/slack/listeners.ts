@@ -14,6 +14,7 @@ import {
 } from 'slack.ts'
 import { config } from '../config'
 import { logAudit } from '../queries/audit'
+import { createBan, getActiveBan, liftActiveBans } from '../queries/bans'
 import {
 	approveSubmission,
 	createSubmission,
@@ -33,6 +34,7 @@ import {
 	type User,
 } from '../queries/users'
 import { forwardMessageFromUser } from './operations'
+import { BAN_CALLBACK_ID, banDurationExpiry, generateBanModal } from './views/ban-modal'
 import { generateUserInspectBlocks } from './views/user-inspect'
 
 export function attachListeners(app: App, userApp: App) {
@@ -71,8 +73,16 @@ export function attachListeners(app: App, userApp: App) {
 			}
 
 			if (attachment.author_id === event.user) {
+				return event.reply("You can't OOC your own message!")
+			}
+
+			const ban = await getActiveBan(event.user)
+			if (ban) {
+				const until = ban.expiresAt
+					? `until <!date^${Math.floor(ban.expiresAt.getTime() / 1000)}^{date_short_pretty} {time}|${ban.expiresAt.toISOString()}>`
+					: 'permanently'
 				return event.reply(
-					'You can\'t OOC your own message!'
+					`:no_entry: You are banned from submitting OOCs ${until}.\nReason: ${ban.reason}`,
 				)
 			}
 
@@ -436,6 +446,83 @@ export function attachListeners(app: App, userApp: App) {
 			})
 		} catch (e) {
 			console.error('Failed to respond to set role select menu:', e)
+		}
+	})
+
+	userApp.on('action:button.admin_ban_user', async (event) => {
+		if (!(await isSuperAdmin(event.event.user.id))) {
+			return event.respond.message({
+				ephemeral: true,
+				text: 'Only super admins can ban users.',
+			})
+		}
+
+		const { id } = JSON.parse(event.value!) as { id: string }
+
+		try {
+			await event.respond.modal(generateBanModal(id))
+		} catch (e) {
+			console.error('Failed to open ban modal:', e)
+		}
+	})
+
+	userApp.on(`submit.${BAN_CALLBACK_ID}`, async (event) => {
+		if (!(await isSuperAdmin(event.user.id))) return
+
+		const userId = event.view.private_metadata
+		const values = event.values as any
+		const durationValue = values.duration_block?.duration?.selected_option?.value as
+			string | undefined
+		const reason = (values.reason_block?.reason?.value as string | undefined)?.trim()
+
+		if (!durationValue || !reason) return
+
+		const expiresAt = banDurationExpiry(durationValue)
+
+		try {
+			await createBan({ userId, reason, expiresAt })
+
+			logAudit({
+				action: 'user.ban',
+				actorId: event.user.id,
+				resourceType: 'user',
+				resourceId: userId,
+				details: { reason, expiresAt },
+			})
+		} catch (e) {
+			console.error('Failed to ban user:', e)
+		}
+	})
+
+	userApp.on('action:button.admin_unban_user', async (event) => {
+		if (!(await isSuperAdmin(event.event.user.id))) {
+			return event.respond.message({
+				ephemeral: true,
+				text: 'Only super admins can unban users.',
+			})
+		}
+
+		const { id } = JSON.parse(event.value!) as { id: string }
+
+		try {
+			const lifted = await liftActiveBans(id)
+			if (lifted === 0) return
+
+			logAudit({
+				action: 'user.unban',
+				actorId: event.event.user.id,
+				resourceType: 'user',
+				resourceId: id,
+				details: { lifted },
+			})
+
+			const user = await getUser(id)
+			await event.respond.edit({
+				ephemeral: true,
+				blocks: await generateUserInspectBlocks(user),
+			})
+		} catch (e) {
+			console.error('Failed to unban user:', e)
 		}
 	})
 
