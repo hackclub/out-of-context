@@ -171,7 +171,7 @@ export function attachListeners(app: App, userApp: App) {
 				submission.forwardedChannelId,
 				submission.forwardedMessageTs,
 				config.slack.channelId,
-				{ text: `<@${submission.submitterId}>` },
+				{ text: `<@${submission.submitterId}> (<@${submission.originalMessageUser}>)` },
 			))
 			await app
 				.channel(postedChannelId)
@@ -180,7 +180,7 @@ export function attachListeners(app: App, userApp: App) {
 					blocks: blocks(
 						context(
 							image('user pfp').url(`https://cachet.dunkirk.sh/users/${submission.submitterId}/r`),
-							`<@${submission.submitterId}>`,
+							`<@${submission.submitterId}> (<@${submission.originalMessageUser}>)`,
 						),
 					),
 					metadata: {
